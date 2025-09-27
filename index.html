@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>TENKU Demo Player</title>
+  <style>
+    body {
+      margin: 0;
+      background: #0a0a0a;
+      color: #fff;
+      font-family: sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .player {
+      width: 90%;
+      max-width: 400px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+    }
+    h1 {
+      font-size: 1.2rem;
+      margin-bottom: 12px;
+    }
+    select, button, input[type=range] {
+      width: 100%;
+      margin-top: 8px;
+    }
+    button {
+      padding: 12px;
+      background: rgba(255,255,255,0.1);
+      border: none;
+      border-radius: 12px;
+      color: #fff;
+      font-size: 1rem;
+    }
+    button:active {
+      background: rgba(255,255,255,0.2);
+    }
+    .time {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: #ccc;
+    }
+    .footer {
+      margin-top: 10px;
+      font-size: 0.7rem;
+      text-align: center;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <div class="player">
+    <h1>TENKU Demo Player</h1>
+
+    <label>
+      トラック
+      <select id="track">
+        <option value="M3TOKYO">M3TOKYO</option>
+        <option value="雷雨">雷雨</option>
+        <option value="ホワイトノイズ">ホワイトノイズ</option>
+      </select>
+    </label>
+
+    <button id="playBtn">再生</button>
+
+    <input type="range" id="seek" min="0" value="0">
+    <div class="time">
+      <span id="current">00:00</span>
+      <span id="duration">00:00</span>
+    </div>
+
+    <label>
+      音量
+      <input type="range" id="volume" min="0" max="1" step="0.01" value="1">
+    </label>
+
+    <div class="footer">© 2025 KOBE TENKU RESORT</div>
+
+    <audio id="audio" loop preload="auto"></audio>
+  </div>
+
+  <script>
+    const audio = document.getElementById('audio');
+    const playBtn = document.getElementById('playBtn');
+    const trackSel = document.getElementById('track');
+    const seek = document.getElementById('seek');
+    const current = document.getElementById('current');
+    const duration = document.getElementById('duration');
+    const volume = document.getElementById('volume');
+
+    function fmt(t) {
+      const m = Math.floor(t / 60).toString().padStart(2, '0');
+      const s = Math.floor(t % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
+    }
+
+    function loadTrack(name) {
+      audio.innerHTML = `
+        <source src="/audio/${name}.wav" type="audio/wav">
+        <source src="/audio/${name}.mp3" type="audio/mpeg">
+      `;
+      audio.load();
+      playBtn.textContent = "再生";
+    }
+
+    trackSel.addEventListener('change', e => {
+      loadTrack(e.target.value);
+    });
+
+    playBtn.addEventListener('click', async () => {
+      if (audio.paused) {
+        await audio.play();
+        playBtn.textContent = "一時停止";
+      } else {
+        audio.pause();
+        playBtn.textContent = "再生";
+      }
+    });
+
+    audio.addEventListener('loadedmetadata', () => {
+      duration.textContent = fmt(audio.duration);
+      seek.max = audio.duration;
+    });
+
+    audio.addEventListener('timeupdate', () => {
+      seek.value = audio.currentTime;
+      current.textContent = fmt(audio.currentTime);
+    });
+
+    seek.addEventListener('input', e => {
+      audio.currentTime = e.target.value;
+    });
+
+    volume.addEventListener('input', e => {
+      audio.volume = e.target.value;
+    });
+
+    // 初期ロード
+    loadTrack(trackSel.value);
+  </script>
+</body>
+</html>
