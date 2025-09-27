@@ -17,7 +17,7 @@
     }
     .player {
       width: 90%;
-      max-width: 400px;
+      max-width: 420px;
       background: rgba(255,255,255,0.05);
       border: 1px solid rgba(255,255,255,0.1);
       border-radius: 16px;
@@ -27,20 +27,29 @@
     h1 {
       font-size: 1.2rem;
       margin-bottom: 12px;
+      text-align: center;
     }
-    select, button, input[type=range] {
+    select, input[type=range] {
       width: 100%;
       margin-top: 8px;
     }
-    button {
-      padding: 12px;
+    .controls {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      margin-top: 12px;
+      gap: 12px;
+    }
+    .controls button {
+      flex: 1;
+      padding: 14px;
       background: rgba(255,255,255,0.1);
       border: none;
       border-radius: 12px;
       color: #fff;
-      font-size: 1rem;
+      font-size: 1.4rem;
     }
-    button:active {
+    .controls button:active {
       background: rgba(255,255,255,0.2);
     }
     .time {
@@ -70,7 +79,11 @@
       </select>
     </label>
 
-    <button id="playBtn">再生</button>
+    <div class="controls">
+      <button id="prevBtn">⏮️</button>
+      <button id="playBtn">▶️</button>
+      <button id="nextBtn">⏭️</button>
+    </div>
 
     <input type="range" id="seek" min="0" value="0">
     <div class="time">
@@ -85,12 +98,15 @@
 
     <div class="footer">© 2025 KOBE TENKU RESORT</div>
 
-    <audio id="audio" loop preload="auto"></audio>
+    <audio id="audio" preload="auto"></audio>
   </div>
 
   <script>
+    const tracks = ["M3TOKYO", "雷雨", "ホワイトノイズ"];
     const audio = document.getElementById('audio');
     const playBtn = document.getElementById('playBtn');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
     const trackSel = document.getElementById('track');
     const seek = document.getElementById('seek');
     const current = document.getElementById('current');
@@ -103,13 +119,18 @@
       return `${m}:${s}`;
     }
 
-    function loadTrack(name) {
+    function loadTrack(name, autoPlay = false) {
       audio.innerHTML = `
         <source src="/audio/${name}.wav" type="audio/wav">
         <source src="/audio/${name}.mp3" type="audio/mpeg">
       `;
       audio.load();
-      playBtn.textContent = "再生";
+      playBtn.textContent = "▶️";
+      if (autoPlay) {
+        audio.play().then(() => {
+          playBtn.textContent = "⏸️";
+        }).catch(() => {});
+      }
     }
 
     trackSel.addEventListener('change', e => {
@@ -119,11 +140,25 @@
     playBtn.addEventListener('click', async () => {
       if (audio.paused) {
         await audio.play();
-        playBtn.textContent = "一時停止";
+        playBtn.textContent = "⏸️";
       } else {
         audio.pause();
-        playBtn.textContent = "再生";
+        playBtn.textContent = "▶️";
       }
+    });
+
+    prevBtn.addEventListener('click', () => {
+      let idx = tracks.indexOf(trackSel.value);
+      idx = (idx - 1 + tracks.length) % tracks.length;
+      trackSel.value = tracks[idx];
+      loadTrack(trackSel.value, true);
+    });
+
+    nextBtn.addEventListener('click', () => {
+      let idx = tracks.indexOf(trackSel.value);
+      idx = (idx + 1) % tracks.length;
+      trackSel.value = tracks[idx];
+      loadTrack(trackSel.value, true);
     });
 
     audio.addEventListener('loadedmetadata', () => {
@@ -142,6 +177,14 @@
 
     volume.addEventListener('input', e => {
       audio.volume = e.target.value;
+    });
+
+    // 曲が終わったら次へ
+    audio.addEventListener('ended', () => {
+      let idx = tracks.indexOf(trackSel.value);
+      idx = (idx + 1) % tracks.length;
+      trackSel.value = tracks[idx];
+      loadTrack(trackSel.value, true);
     });
 
     // 初期ロード
