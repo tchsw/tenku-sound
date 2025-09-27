@@ -7,28 +7,34 @@
   <style>
     body {
       margin: 0;
-      background: #0a0a0a;
-      color: #fff;
       font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      color: #fff;
       display: flex;
       flex-direction: column;
       min-height: 100vh;
+
+      /* 背景画像設定 */
+      background-image: url("/images/天空サウンド1.jpg");
+      background-size: cover;       /* 画面全体に広げる */
+      background-position: center;  /* 中央に配置 */
+      background-repeat: no-repeat; /* 繰り返さない */
     }
     h1 {
       font-size: 1.2rem;
       text-align: center;
       margin: 20px 0 10px;
       font-weight: 600;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.6); /* 背景に馴染ませる */
     }
-    select {
-      width: 100%;
-      margin: 0 auto 10px;
+    select, input[type=range] {
+      width: 90%;
+      margin: 8px auto;
+      display: block;
       font-size: 1rem;
-      padding: 8px;
       background: transparent;
       color: #fff;
       border: none;
-      border-bottom: 1px solid #444;
+      border-bottom: 1px solid #ccc;
     }
     select:focus {
       outline: none;
@@ -46,19 +52,18 @@
       border: none;
       color: #fff;
       font-size: 2rem;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.6);
     }
     .controls button:active {
       opacity: 0.6;
     }
     input[type=range] {
       -webkit-appearance: none;
-      width: 100%;
-      margin: 0;
       background: transparent;
     }
     input[type=range]::-webkit-slider-runnable-track {
       height: 2px;
-      background: #666;
+      background: #ccc;
     }
     input[type=range]::-webkit-slider-thumb {
       -webkit-appearance: none;
@@ -72,15 +77,18 @@
       display: flex;
       justify-content: space-between;
       font-size: 0.8rem;
-      color: #aaa;
-      margin: 4px 0 20px;
+      color: #eee;
+      margin: 4px auto 16px;
+      width: 90%;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.6);
     }
     .footer {
       font-size: 0.7rem;
       text-align: center;
-      color: #666;
+      color: #ddd;
       margin-top: auto;
       padding: 10px;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.6);
     }
   </style>
 </head>
