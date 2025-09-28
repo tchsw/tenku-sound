@@ -5,115 +5,29 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0" />
   <title>TENKU Demo Player</title>
   <style>
-    :root {
-      --track-gap: 40px;
-      --fg: #fff;
-      --fg-dim: #ddd;
-      --fg-muted: #aaa;
-    }
-    /* 背景レイヤ（2枚を交互にフェード） */
-    .bg {
-      position: fixed;
-      inset: 0;
-      z-index: -1;
-      overflow: hidden;
-    }
-    .bg__layer {
-      position: absolute;
-      inset: 0;
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-      opacity: 0;
-      transition: opacity 400ms ease;
-      will-change: opacity, background-image;
-    }
-    .bg__layer.is-active { opacity: 1; }
-
-    /* 本体（Apple Music風フラット） */
-    body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      color: var(--fg);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-    h1 {
-      font-size: 1.2rem;
-      text-align: center;
-      margin: 20px 0 10px;
-      font-weight: 600;
-      text-shadow: 0 2px 4px rgba(0,0,0,0.6);
-    }
-    select, input[type=range] {
-      width: 90%;
-      margin: 8px auto;
-      display: block;
-      font-size: 1rem;
-      color: var(--fg);
-      background: transparent;
-      border: none;
-    }
-    select {
-      border-bottom: 1px solid #ccc;
-      padding: 8px 0;
-    }
-    select:focus { outline: none; border-bottom-color: #fff; }
-
-    .controls {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: var(--track-gap);
-      margin: 18px 0 14px;
-    }
-    .controls button {
-      background: none;
-      border: none;
-      color: var(--fg);
-      font-size: 2rem;
-      padding: 8px 10px;
-      text-shadow: 0 2px 4px rgba(0,0,0,0.6);
-      touch-action: manipulation;
-    }
-    .controls button:active { opacity: 0.6; }
-
-    input[type=range] { -webkit-appearance: none; background: transparent; }
-    input[type=range]::-webkit-slider-runnable-track { height: 2px; background: #eee; }
-    input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance: none; height: 14px; width: 14px; border-radius: 50%; background: #fff; margin-top: -6px;
-    }
-    input[type=range]::-moz-range-track { height: 2px; background: #eee; }
-    input[type=range]::-moz-range-thumb { height: 14px; width: 14px; border-radius: 50%; background: #fff; border: 0; }
-
-    .time {
-      width: 90%;
-      margin: 4px auto 18px;
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.8rem;
-      color: var(--fg-muted);
-      text-shadow: 0 1px 3px rgba(0,0,0,0.6);
-    }
-
-    .footer {
-      font-size: 0.7rem;
-      text-align: center;
-      color: var(--fg-dim);
-      padding: 12px 10px 16px;
-      margin-top: auto;
-      text-shadow: 0 1px 3px rgba(0,0,0,0.6);
-    }
-
-    @media (min-width: 480px) {
-      :root { --track-gap: 56px; }
-      h1 { margin-top: 28px; }
-    }
+    :root { --track-gap: 40px; --fg: #fff; --fg-dim:#ddd; --fg-muted:#aaa; }
+    .bg{position:fixed;inset:0;z-index:-1;overflow:hidden}
+    .bg__layer{position:absolute;inset:0;background-size:cover;background-position:center;background-repeat:no-repeat;opacity:0;transition:opacity .4s ease}
+    .bg__layer.is-active{opacity:1}
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--fg);min-height:100vh;display:flex;flex-direction:column}
+    h1{font-size:1.2rem;text-align:center;margin:20px 0 10px;font-weight:600;text-shadow:0 2px 4px rgba(0,0,0,.6)}
+    select,input[type=range]{width:90%;margin:8px auto;display:block;font-size:1rem;color:var(--fg);background:transparent;border:none}
+    select{border-bottom:1px solid #ccc;padding:8px 0} select:focus{outline:none;border-bottom-color:#fff}
+    .controls{display:flex;justify-content:center;align-items:center;gap:var(--track-gap);margin:18px 0 14px}
+    .controls button{background:none;border:none;color:var(--fg);font-size:2rem;padding:8px 10px;text-shadow:0 2px 4px rgba(0,0,0,.6)}
+    .controls button:active{opacity:.6}
+    input[type=range]{-webkit-appearance:none;background:transparent}
+    input[type=range]::-webkit-slider-runnable-track{height:2px;background:#eee}
+    input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;height:14px;width:14px;border-radius:50%;background:#fff;margin-top:-6px}
+    input[type=range]::-moz-range-track{height:2px;background:#eee}
+    input[type=range]::-moz-range-thumb{height:14px;width:14px;border-radius:50%;background:#fff;border:0}
+    .time{width:90%;margin:4px auto 8px;display:flex;justify-content:space-between;font-size:.8rem;color:var(--fg-muted);text-shadow:0 1px 3px rgba(0,0,0,.6)}
+    .msg{width:90%;margin:6px auto 0;color:#ffdede;font-size:.8rem}
+    .footer{font-size:.7rem;text-align:center;color:var(--fg-dim);padding:12px 10px 16px;margin-top:auto;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+    @media(min-width:480px){:root{--track-gap:56px}h1{margin-top:28px}}
   </style>
 </head>
 <body>
-  <!-- 背景（2レイヤ交互切替） -->
   <div class="bg" aria-hidden="true">
     <div id="bgA" class="bg__layer is-active"></div>
     <div id="bgB" class="bg__layer"></div>
@@ -140,128 +54,71 @@
   </div>
 
   <input type="range" id="volume" min="0" max="1" step="0.01" value="1" aria-label="音量">
+  <div id="msg" class="msg"></div>
 
   <div class="footer">© 2025 KOBE TENKU RESORT</div>
 
-  <audio id="audio" preload="auto"></audio>
+  <audio id="audio" preload="auto" playsinline></audio>
 
   <script>
-    // トラック番号と背景マップ
-    const bgMap = {
-      1: "/images/bg1.jpg",
-      2: "/images/bg2.jpg",
-      3: "/images/bg3.jpg",
-    };
+    const bgMap={1:"./assets/images/bg1.jpg",2:"./assets/images/bg2.jpg",3:"./assets/images/bg3.jpg"};
+    const audio=document.getElementById('audio');
+    const playBtn=document.getElementById('playBtn');
+    const prevBtn=document.getElementById('prevBtn');
+    const nextBtn=document.getElementById('nextBtn');
+    const trackSel=document.getElementById('track');
+    const seek=document.getElementById('seek');
+    const current=document.getElementById('current');
+    const duration=document.getElementById('duration');
+    const volume=document.getElementById('volume');
+    const bgA=document.getElementById('bgA');
+    const bgB=document.getElementById('bgB');
+    const msg=document.getElementById('msg');
+    let activeIsA=true;
 
-    const audio = document.getElementById('audio');
-    const playBtn = document.getElementById('playBtn');
-    const prevBtn = document.getElementById('prevBtn');
-    const nextBtn = document.getElementById('nextBtn');
-    const trackSel = document.getElementById('track');
-    const seek = document.getElementById('seek');
-    const current = document.getElementById('current');
-    const duration = document.getElementById('duration');
-    const volume = document.getElementById('volume');
-    const bgA = document.getElementById('bgA');
-    const bgB = document.getElementById('bgB');
-    let activeIsA = true;
+    const fmt=t=>`${String(Math.floor(t/60)).padStart(2,'0')}:${String(Math.floor(t%60)).padStart(2,'0')}`;
 
-    function fmt(t) {
-      const m = Math.floor(t / 60).toString().padStart(2, '0');
-      const s = Math.floor(t % 60).toString().padStart(2, '0');
-      return `${m}:${s}`;
+    function setBackground(num){
+      const url=bgMap[num];
+      const front=activeIsA?bgB:bgA, back=activeIsA?bgA:bgB;
+      const img=new Image();
+      img.onload=()=>{front.style.backgroundImage=`url("${url}")`;front.classList.add('is-active');back.classList.remove('is-active');activeIsA=!activeIsA;};
+      img.onerror=()=>{msg.textContent=`背景が読み込めません: ${url}`;}
+      img.src=url;
     }
 
-    function setBackground(num) {
-      const url = bgMap[num];
-      const front = activeIsA ? bgB : bgA;
-      const back = activeIsA ? bgA : bgB;
-      front.style.backgroundImage = `url("${url}")`;
-      const img = new Image();
-      img.onload = () => {
-        front.classList.add('is-active');
-        back.classList.remove('is-active');
-        activeIsA = !activeIsA;
-      };
-      img.src = url;
-    }
-
-    function loadTrack(num, autoPlay = false) {
-      audio.innerHTML = `
-        <source src="/audio/sound${num}.wav" type="audio/wav">
-        <source src="/audio/sound${num}.mp3" type="audio/mpeg">
-      `;
+    function loadTrack(num, autoPlay=false){
+      const src=`./assets/audio/sound${num}.mp3`;
+      audio.innerHTML=`<source src="${src}" type="audio/mpeg">`;
       audio.load();
-      playBtn.textContent = "▶️";
+      playBtn.textContent="▶️";
       setBackground(num);
-      if (autoPlay) {
-        audio.play().then(() => {
-          playBtn.textContent = "⏸️";
-        }).catch(() => {});
+      msg.textContent="";
+      if(autoPlay){
+        audio.play().then(()=>{playBtn.textContent="⏸️";}).catch((e)=>{msg.textContent="再生できませんでした。端末のサイレント/音量をご確認のうえ、もう一度押してください。"; console.warn(e);});
       }
     }
 
-    playBtn.addEventListener('click', async () => {
-      if (audio.paused) {
-        await audio.play();
-        playBtn.textContent = "⏸️";
-      } else {
-        audio.pause();
-        playBtn.textContent = "▶️";
-      }
+    playBtn.addEventListener('click',async()=>{
+      try{
+        if(audio.paused){ await audio.play(); playBtn.textContent="⏸️"; msg.textContent=""; }
+        else { audio.pause(); playBtn.textContent="▶️"; }
+      }catch(e){ msg.textContent="再生がブロックされました。画面をタップしてからもう一度試してください。"; console.warn(e); }
     });
 
-    prevBtn.addEventListener('click', () => {
-      let idx = Number(trackSel.value);
-      idx = (idx - 2 + 3) % 3 + 1; // 1→3に戻る
-      trackSel.value = idx;
-      loadTrack(idx, true);
-    });
+    prevBtn.addEventListener('click',()=>{let i=Number(trackSel.value); i=(i-2+3)%3+1; trackSel.value=i; loadTrack(i,true);});
+    nextBtn.addEventListener('click',()=>{let i=Number(trackSel.value); i=(i%3)+1; trackSel.value=i; loadTrack(i,true);});
+    trackSel.addEventListener('change',e=>loadTrack(Number(e.target.value),true));
 
-    nextBtn.addEventListener('click', () => {
-      let idx = Number(trackSel.value);
-      idx = (idx % 3) + 1; // 3→1に戻る
-      trackSel.value = idx;
-      loadTrack(idx, true);
-    });
+    audio.addEventListener('loadedmetadata',()=>{duration.textContent=fmt(audio.duration||0); seek.max=audio.duration||0;});
+    audio.addEventListener('timeupdate',()=>{seek.value=audio.currentTime||0; current.textContent=fmt(audio.currentTime||0);});
+    seek.addEventListener('input',e=>{audio.currentTime=Number(e.target.value)||0;});
+    volume.addEventListener('input',e=>{audio.volume=Number(e.target.value);});
 
-    trackSel.addEventListener('change', e => {
-      loadTrack(Number(e.target.value), true);
-    });
+    audio.addEventListener('error',()=>{const s=audio.querySelector('source')?.src||""; msg.textContent=`サウンドが読み込めません: ${s}`;});
+    audio.addEventListener('ended',()=>{let i=Number(trackSel.value); i=(i%3)+1; trackSel.value=i; loadTrack(i,true);});
 
-    audio.addEventListener('loadedmetadata', () => {
-      duration.textContent = fmt(audio.duration);
-      seek.max = audio.duration || 0;
-    });
-
-    audio.addEventListener('timeupdate', () => {
-      seek.value = audio.currentTime || 0;
-      current.textContent = fmt(audio.currentTime || 0);
-    });
-
-    seek.addEventListener('input', e => {
-      audio.currentTime = Number(e.target.value) || 0;
-    });
-
-    volume.addEventListener('input', e => {
-      audio.volume = Number(e.target.value);
-    });
-
-    audio.addEventListener('ended', () => {
-      let idx = Number(trackSel.value);
-      idx = (idx % 3) + 1;
-      trackSel.value = idx;
-      loadTrack(idx, true);
-    });
-
-    // 初期化
-    (function init() {
-      const first = Number(trackSel.value);
-      bgA.style.backgroundImage = `url("${bgMap[first]}")`;
-      bgA.classList.add('is-active');
-      bgB.style.backgroundImage = `url("${bgMap[first]}")`;
-      loadTrack(first, false);
-    })();
+    (function init(){ const first=Number(trackSel.value); bgA.style.backgroundImage=`url("${bgMap[first]}")`; bgA.classList.add('is-active'); bgB.style.backgroundImage=`url("${bgMap[first]}")`; loadTrack(first,false); })();
   </script>
 </body>
 </html>
