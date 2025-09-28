@@ -1,142 +1,205 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
   <title>TENKU Demo Player</title>
   <style>
+    :root {
+      --track-gap: 40px;
+      --fg: #fff;
+      --fg-dim: #ddd;
+      --fg-muted: #aaa;
+    }
+    /* 背景レイヤ（2枚のレイヤを交互にフェード） */
+    .bg {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      overflow: hidden;
+    }
+    .bg__layer {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      opacity: 0;
+      transition: opacity 380ms ease;
+      will-change: opacity, background-image;
+    }
+    .bg__layer.is-active {
+      opacity: 1;
+    }
+
+    /* 本体（Apple Music風フラット） */
     body {
       margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: var(--fg);
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
-      min-height: 100vh;
-
-      /* 背景画像設定 */
-      background-image: url("/images/天空サウンド背景1.jpg");
-      background-size: cover;       /* 画面全体に広げる */
-      background-position: center;  /* 中央に配置 */
-      background-repeat: no-repeat; /* 繰り返さない */
     }
     h1 {
       font-size: 1.2rem;
       text-align: center;
       margin: 20px 0 10px;
       font-weight: 600;
-      text-shadow: 0 2px 4px rgba(0,0,0,0.6); /* 背景に馴染ませる */
+      text-shadow: 0 2px 4px rgba(0,0,0,0.6);
     }
+    /* セレクト & スライダー（フラット、下線のみ） */
     select, input[type=range] {
       width: 90%;
       margin: 8px auto;
       display: block;
       font-size: 1rem;
+      color: var(--fg);
       background: transparent;
-      color: #fff;
       border: none;
+    }
+    select {
       border-bottom: 1px solid #ccc;
+      padding: 8px 0;
     }
-    select:focus {
-      outline: none;
-      border-bottom: 1px solid #fff;
-    }
+    select:focus { outline: none; border-bottom-color: #fff; }
+
+    /* 中央コントロール（前・再生/一時停止・次） */
     .controls {
       display: flex;
       justify-content: center;
       align-items: center;
-      gap: 40px;
-      margin: 20px 0;
+      gap: var(--track-gap);
+      margin: 18px 0 14px;
     }
     .controls button {
       background: none;
       border: none;
-      color: #fff;
+      color: var(--fg);
       font-size: 2rem;
+      padding: 8px 10px;
       text-shadow: 0 2px 4px rgba(0,0,0,0.6);
+      touch-action: manipulation;
     }
-    .controls button:active {
-      opacity: 0.6;
-    }
-    input[type=range] {
-      -webkit-appearance: none;
-      background: transparent;
-    }
-    input[type=range]::-webkit-slider-runnable-track {
-      height: 2px;
-      background: #ccc;
-    }
+    .controls button:active { opacity: 0.6; }
+
+    /* シーク */
+    input[type=range] { -webkit-appearance: none; background: transparent; }
+    input[type=range]::-webkit-slider-runnable-track { height: 2px; background: #eee; }
     input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      height: 14px;
-      width: 14px;
-      border-radius: 50%;
-      background: #fff;
-      margin-top: -6px;
+      -webkit-appearance: none; height: 14px; width: 14px; border-radius: 50%; background: #fff; margin-top: -6px;
     }
+    input[type=range]::-moz-range-track { height: 2px; background: #eee; }
+    input[type=range]::-moz-range-thumb { height: 14px; width: 14px; border-radius: 50%; background: #fff; border: 0; }
+
     .time {
+      width: 90%;
+      margin: 4px auto 18px;
       display: flex;
       justify-content: space-between;
       font-size: 0.8rem;
-      color: #eee;
-      margin: 4px auto 16px;
-      width: 90%;
+      color: var(--fg-muted);
       text-shadow: 0 1px 3px rgba(0,0,0,0.6);
     }
+
     .footer {
       font-size: 0.7rem;
       text-align: center;
-      color: #ddd;
+      color: var(--fg-dim);
+      padding: 12px 10px 16px;
       margin-top: auto;
-      padding: 10px;
       text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+    }
+
+    /* 横幅が広いときだけ少し余白調整 */
+    @media (min-width: 480px) {
+      :root { --track-gap: 56px; }
+      h1 { margin-top: 28px; }
     }
   </style>
 </head>
 <body>
+  <!-- 背景（2レイヤ交互切替） -->
+  <div class="bg" aria-hidden="true">
+    <div id="bgA" class="bg__layer is-active"></div>
+    <div id="bgB" class="bg__layer"></div>
+  </div>
+
   <h1>TENKU Demo Player</h1>
 
-  <select id="track">
+  <select id="track" aria-label="トラックを選択">
     <option value="M3TOKYO">M3TOKYO</option>
     <option value="雷雨">雷雨</option>
     <option value="ホワイトノイズ">ホワイトノイズ</option>
   </select>
 
-  <div class="controls">
-    <button id="prevBtn">⏮️</button>
-    <button id="playBtn">▶️</button>
-    <button id="nextBtn">⏭️</button>
+  <div class="controls" role="group" aria-label="再生コントロール">
+    <button id="prevBtn" aria-label="前の曲へ">⏮️</button>
+    <button id="playBtn" aria-label="再生">▶️</button>
+    <button id="nextBtn" aria-label="次の曲へ">⏭️</button>
   </div>
 
-  <input type="range" id="seek" min="0" value="0">
+  <input type="range" id="seek" min="0" value="0" aria-label="再生位置">
   <div class="time">
     <span id="current">00:00</span>
     <span id="duration">00:00</span>
   </div>
 
-  <input type="range" id="volume" min="0" max="1" step="0.01" value="1">
+  <input type="range" id="volume" min="0" max="1" step="0.01" value="1" aria-label="音量">
 
   <div class="footer">© 2025 KOBE TENKU RESORT</div>
 
   <audio id="audio" preload="auto"></audio>
 
   <script>
+    // 楽曲リストと背景の対応
     const tracks = ["M3TOKYO", "雷雨", "ホワイトノイズ"];
-    const audio = document.getElementById('audio');
+    const bgMap = {
+      "M3TOKYO": "/images/天空サウンド背景1.jpg",
+      "雷雨": "/images/天空サウンド背景2.jpg",
+      "ホワイトノイズ": "/images/天空サウンド背景3.jpg",
+    };
+
+    // 要素参照
+    const audio   = document.getElementById('audio');
     const playBtn = document.getElementById('playBtn');
     const prevBtn = document.getElementById('prevBtn');
     const nextBtn = document.getElementById('nextBtn');
-    const trackSel = document.getElementById('track');
-    const seek = document.getElementById('seek');
+    const trackSel= document.getElementById('track');
+    const seek    = document.getElementById('seek');
     const current = document.getElementById('current');
-    const duration = document.getElementById('duration');
-    const volume = document.getElementById('volume');
+    const duration= document.getElementById('duration');
+    const volume  = document.getElementById('volume');
+    const bgA     = document.getElementById('bgA');
+    const bgB     = document.getElementById('bgB');
 
+    let activeIsA = true; // どちらの背景レイヤが前面か
+
+    // 時刻フォーマット
     function fmt(t) {
       const m = Math.floor(t / 60).toString().padStart(2, '0');
       const s = Math.floor(t % 60).toString().padStart(2, '0');
       return `${m}:${s}`;
     }
 
+    // 背景をフェードで切替
+    function setBackgroundForTrack(name) {
+      const url = bgMap[name];
+      const front = activeIsA ? bgB : bgA; // 裏のレイヤに新画像をセット
+      const back  = activeIsA ? bgA : bgB; // 表のレイヤ（今見えている）
+      front.style.backgroundImage = `url("${url}")`;
+
+      // 画像のプリロード後にフェード
+      const img = new Image();
+      img.onload = () => {
+        front.classList.add('is-active');
+        back.classList.remove('is-active');
+        activeIsA = !activeIsA;
+      };
+      img.src = url;
+    }
+
+    // トラックの読み込み
     function loadTrack(name, autoPlay = false) {
       audio.innerHTML = `
         <source src="/audio/${name}.wav" type="audio/wav">
@@ -144,6 +207,7 @@
       `;
       audio.load();
       playBtn.textContent = "▶️";
+      setBackgroundForTrack(name);
       if (autoPlay) {
         audio.play().then(() => {
           playBtn.textContent = "⏸️";
@@ -151,9 +215,8 @@
       }
     }
 
-    trackSel.addEventListener('change', e => {
-      loadTrack(e.target.value);
-    });
+    // ▼ イベント
+    trackSel.addEventListener('change', e => loadTrack(e.target.value, true));
 
     playBtn.addEventListener('click', async () => {
       if (audio.paused) {
@@ -181,22 +244,23 @@
 
     audio.addEventListener('loadedmetadata', () => {
       duration.textContent = fmt(audio.duration);
-      seek.max = audio.duration;
+      seek.max = audio.duration || 0;
     });
 
     audio.addEventListener('timeupdate', () => {
-      seek.value = audio.currentTime;
-      current.textContent = fmt(audio.currentTime);
+      seek.value = audio.currentTime || 0;
+      current.textContent = fmt(audio.currentTime || 0);
     });
 
     seek.addEventListener('input', e => {
-      audio.currentTime = e.target.value;
+      audio.currentTime = Number(e.target.value) || 0;
     });
 
     volume.addEventListener('input', e => {
-      audio.volume = e.target.value;
+      audio.volume = Number(e.target.value);
     });
 
+    // 曲が終わったら次へ
     audio.addEventListener('ended', () => {
       let idx = tracks.indexOf(trackSel.value);
       idx = (idx + 1) % tracks.length;
@@ -204,7 +268,17 @@
       loadTrack(trackSel.value, true);
     });
 
-    loadTrack(trackSel.value);
+    // 初期表示：現在選択の曲＆背景をセット
+    (function init() {
+      // 背景の初期セット（両レイヤに同じものを入れて点滅防止）
+      const firstBg = bgMap[trackSel.value];
+      bgA.style.backgroundImage = `url("${firstBg}")`;
+      bgB.style.backgroundImage = `url("${firstBg}")`;
+      bgA.classList.add('is-active');
+      bgB.classList.remove('is-active');
+
+      loadTrack(trackSel.value, false);
+    })();
   </script>
 </body>
 </html>
