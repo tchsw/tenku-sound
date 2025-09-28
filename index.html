@@ -48,7 +48,7 @@
 
     .track-title {
       align-self: center;
-      font-size: 1.2rem; /* 0.8倍サイズ */
+      font-size: 1.2rem; /* 指定どおり 0.8倍 */
       margin: 0;
       font-weight: 500;
     }
@@ -79,6 +79,7 @@
     #playBtn svg { width: 48px; height: 48px; }
     .controls button:active { opacity: 0.6; }
 
+    /* シーク/音量は反転表示を維持 */
     input[type=range] {
       width: 100%;
       margin: 6px 0;
@@ -113,7 +114,7 @@
       color: #ccc;
     }
 
-    /* 音量バーの左にアイコン */
+    /* 音量バー（左にアイコン） */
     .volume-control {
       display: flex;
       align-items: center;
@@ -176,9 +177,9 @@
       <span id="duration">00:00</span>
     </div>
 
-    <!-- 音量コントロール（アイコン付き） -->
+    <!-- 音量（アイコン＋バー） -->
     <div class="volume-control">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.06c1.48-.74 2.5-2.26 2.5-4.03z"/>
       </svg>
       <input type="range" id="volume" min="0" max="1" step="0.01" value="1" aria-label="音量">
@@ -205,18 +206,49 @@
       3: "サンプルミュージック",
     };
 
-    const audio=document.getElementById('audio');
-    const playBtn=document.getElementById('playBtn');
-    const trackSel=document.getElementById('track');
-    const trackTitle=document.getElementById('trackTitle');
-    const seek=document.getElementById('seek');
-    const current=document.getElementById('current');
-    const duration=document.getElementById('duration');
-    const volume=document.getElementById('volume');
-    const bgA=document.getElementById('bgA');
-    const bgB=document.getElementById('bgB');
-    const msg=document.getElementById('msg');
-    let activeIsA=true;
+    const audio   = document.getElementById('audio');
+    const playBtn = document.getElementById('playBtn');
+    const trackSel= document.getElementById('track');
+    const trackTitle = document.getElementById('trackTitle');
+    const seek    = document.getElementById('seek');
+    const current = document.getElementById('current');
+    const duration= document.getElementById('duration');
+    const volume  = document.getElementById('volume');
+    const bgA     = document.getElementById('bgA');
+    const bgB     = document.getElementById('bgB');
+    const msg     = document.getElementById('msg');
+    let activeIsA = true;
+
+    // ---- Web Audio（モバイルの音量問題対策）----
+    let audioCtx = null;
+    let gainNode = null;
+    let mediaSrc = null;
+    function ensureAudioGraph(){
+      if (audioCtx) return; // 既に作成済み
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) {
+        // 非対応ブラウザ（かなり稀）→ audio.volume にフォールバック
+        return;
+      }
+      audioCtx = new Ctx();
+      try {
+        mediaSrc = audioCtx.createMediaElementSource(audio);
+      } catch (e) {
+        // すでに接続済みだと例外になるので無視
+      }
+      gainNode = audioCtx.createGain();
+      (mediaSrc && mediaSrc.connect(gainNode));
+      gainNode.connect(audioCtx.destination);
+      // 現在のスライダー値を反映
+      if (gainNode) gainNode.gain.value = Number(volume.value);
+    }
+
+    function resumeContextIfNeeded(){
+      if (audioCtx && audioCtx.state === "suspended") {
+        audioCtx.resume().catch(()=>{});
+      }
+    }
+    // ------------------------------------------
 
     const fmt=t=>`${String(Math.floor(t/60)).padStart(2,'0')}:${String(Math.floor(t%60)).padStart(2,'0')}`;
 
@@ -246,6 +278,9 @@
       trackTitle.textContent = trackNames[num];
       msg.textContent="";
       if(autoPlay){
+        // 再生時にオーディオグラフ用意
+        ensureAudioGraph();
+        resumeContextIfNeeded();
         audio.play()
           .then(()=>{ updatePlayIcon(true); })
           .catch((e)=>{ msg.textContent="再生できませんでした。"; console.warn(e); });
@@ -262,8 +297,12 @@
     }
 
     playBtn.addEventListener('click',async()=>{
+      // ユーザー操作でオーディオグラフを初期化
+      ensureAudioGraph();
+      resumeContextIfNeeded();
+
       if(audio.paused){
-        try{await audio.play(); updatePlayIcon(true);}
+        try{await audio.play(); updatePlayIcon(true); msg.textContent="";}
         catch{msg.textContent="再生がブロックされました。";}
       } else {
         audio.pause(); updatePlayIcon(false);
@@ -271,33 +310,44 @@
     });
 
     document.getElementById('prevBtn').addEventListener('click',()=>{
-      let i=Number(trackSel.value);
-      i=(i-2+3)%3+1;
-      trackSel.value=i;
-      loadTrack(i,true);
+      let i=Number(trackSel.value); i=(i-2+3)%3+1; trackSel.value=i; loadTrack(i,true);
     });
-
     document.getElementById('nextBtn').addEventListener('click',()=>{
-      let i=Number(trackSel.value);
-      i=(i%3)+1;
-      trackSel.value=i;
-      loadTrack(i,true);
+      let i=Number(trackSel.value); i=(i%3)+1; trackSel.value=i; loadTrack(i,true);
     });
-
     trackSel.addEventListener('change',e=>loadTrack(Number(e.target.value),true));
 
     audio.addEventListener('loadedmetadata',()=>{duration.textContent=fmt(audio.duration||0); seek.max=audio.duration||0;});
     audio.addEventListener('timeupdate',()=>{seek.value=audio.currentTime||0; current.textContent=fmt(audio.currentTime||0);});
     seek.addEventListener('input',e=>{audio.currentTime=Number(e.target.value)||0;});
-    volume.addEventListener('input',e=>{audio.volume=Number(e.target.value);});
 
-    audio.addEventListener('ended',()=>{let i=Number(trackSel.value); i=(i%3)+1; trackSel.value=i; loadTrack(i,true);});
+    // ここがポイント：volume スライダーは GainNode を操作
+    function setVolumeFromSlider(v){
+      const vol = Math.max(0, Math.min(1, Number(v)));
+      if (gainNode) {
+        gainNode.gain.value = vol;
+      } else {
+        // フォールバック（Android等ではこれでも効くことが多い）
+        audio.volume = vol;
+      }
+    }
+    volume.addEventListener('input',e=>{
+      ensureAudioGraph();           // iOSでもユーザー操作中なら初期化可
+      resumeContextIfNeeded();
+      setVolumeFromSlider(e.target.value);
+    });
+
+    audio.addEventListener('ended',()=>{
+      let i=Number(trackSel.value); i=(i%3)+1; trackSel.value=i; loadTrack(i,true);
+    });
 
     (function init(){
       const first=Number(trackSel.value);
       bgA.style.backgroundImage=`url("${bgMap[first]}")`;
       bgA.classList.add('is-active');
       loadTrack(first,false);
+      // 初期ボリューム適用（WebAudio未初期化時はフォールバック）
+      setVolumeFromSlider(volume.value);
     })();
   </script>
 </body>
