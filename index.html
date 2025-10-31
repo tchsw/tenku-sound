@@ -1,34 +1,192 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+<title>TENKU Radio Player</title>
+<style>
+  :root{
+    --ink:#0b0b0b;
+    --paper:#f3eee8;
+    --tick:#00000055;
+    --active:#111;
+    --accent:#d44a2b; /* 中央固定の赤い目盛 */
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; font-family: ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial;
+    background:var(--paper); color:var(--ink);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* 背景（薄く出す） */
+  .bg{position:fixed; inset:0; z-index:-2}
+  .bg__layer{position:absolute; inset:0; background-size:cover; background-position:center; opacity:0; transition:opacity .6s ease;}
+  .bg__layer.is-active{opacity:.22;}
+
+  /* レイアウト（モバイル先行） */
+  .wrap{min-height:100dvh; display:flex; align-items:center; justify-content:center; padding:16px;}
+  .panel{
+    width:100%; max-width:920px;
+    background:#f8f4e6; border:1px solid #00000018; border-radius:14px;
+    box-shadow:0 12px 40px rgba(0,0,0,.08);
+  }
+  .panel__top{
+    display:grid; grid-template-columns: 1fr auto; align-items:center;
+    gap:8px; padding:12px 14px; border-bottom:1px solid #00000018;
+  }
+  .brand{letter-spacing:.08em; font-weight:700; font-size:.9rem;}
+  .timebox{display:flex; align-items:baseline; gap:10px}
+  .timebox .label{font-size:.7rem; opacity:.6}
+  .timebox .hms{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:1.05rem}
+
+  /* TUNER（中央赤目盛 固定／トラック側が動く） */
+  .tuner{position:relative; padding:12px 14px 8px; display:flex; flex-direction:column; gap:10px;}
+  .scale{
+    position:relative; height:64px; border-radius:10px; background:#fdfdfd;
+    border:1px solid #00000018; overflow:hidden; touch-action:none;
+  }
+  /* 中身の長いトラック（これを左右に動かす） */
+  .scale-track{
+    position:absolute; top:0; left:0; height:100%;
+    width:200%; /* ビューポートの2倍幅（余白を持たせる） */
+    will-change: transform;
+    background:
+      repeating-linear-gradient(to right, var(--tick) 0px, var(--tick) 1px, transparent 1px, transparent 7px),
+      repeating-linear-gradient(to right, var(--tick) 0px, var(--tick) 2px, transparent 2px, transparent 40px);
+  }
+  .station{position:absolute; top:0; height:100%; width:4px; background:#111; opacity:.18; transform:translateX(-2px);}
+  .station.is-hot{opacity:.36;}
+
+  /* 中央固定の赤い目盛 */
+  .needle-fixed{
+    position:absolute; top:0; bottom:0; left:50%; width:3px; transform:translateX(-1.5px);
+    background:linear-gradient(to bottom, transparent 6px, var(--accent) 6px, var(--accent) calc(100% - 6px), transparent calc(100% - 6px));
+    box-shadow:0 0 0 1px #00000010 inset, 0 0 12px #d44a2b55;
+    pointer-events:none;
+  }
+
+  .readout{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:2px 2px 0;}
+  .freq{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:1.25rem; font-weight:700}
+  .subtitle{font-size:.78rem; opacity:.65; text-align:right}
+
+  /* 下段 操作 */
+  .lower{display:flex; flex-direction:column; gap:14px; padding:10px 14px 14px;}
+  .meta{display:flex; flex-direction:column; gap:2px;}
+  .title{font-weight:700; font-size:1.05rem;}
+  .desc{font-size:.82rem; opacity:.7}
+  .actions{display:flex; align-items:center; gap:14px; flex-wrap:wrap;}
+  .icon-btn{background:#fff; border:1px solid #00000018; border-radius:12px; padding:12px; display:grid; place-items:center;}
+  .icon-btn svg{width:26px; height:26px; fill:#111}
+  .icon-btn:active{transform:translateY(1px)}
+  .volume{display:flex; align-items:center; gap:10px; margin-left:auto; width:100%;}
+  .volume svg{width:18px; height:18px; fill:#111}
+  .range{-webkit-appearance:none; width:100%; background:transparent;}
+  .range::-webkit-slider-runnable-track{height:2px; background:#111;}
+  .range::-webkit-slider-thumb{-webkit-appearance:none; width:16px; height:16px; border-radius:50%; background:#111; margin-top:-7px;}
+  .range::-moz-range-track{height:2px; background:#111;}
+  .range::-moz-range-thumb{width:16px; height:16px; border:none; border-radius:50%; background:#111;}
+
+  /* ブレークポイント */
+  @media (min-width:560px){
+    .wrap{padding:24px}
+    .panel__top{padding:14px 16px}
+    .tuner{padding:16px}
+    .scale{height:58px}
+    .lower{padding:12px 16px 18px}
+    .volume{width:auto; min-width:220px}
+  }
+  @media (min-width:780px){
+    .lower{flex-direction:row; align-items:center; justify-content:space-between;}
+    .actions{gap:16px}
+    .icon-btn{padding:12px}
+    .icon-btn svg{width:24px; height:24px}
+    .range{width:min(260px,32vw)}
+  }
+</style>
+</head>
+<body>
+  <!-- 背景 -->
+  <div class="bg">
+    <div id="bgA" class="bg__layer is-active"></div>
+    <div id="bgB" class="bg__layer"></div>
+  </div>
+
+  <div class="wrap">
+    <section class="panel" aria-label="Tenku Radio Player">
+      <header class="panel__top">
+        <div class="brand">TENKU RADIO</div>
+        <div class="timebox"><span class="label">elapsed</span><span id="hms" class="hms">00:00</span></div>
+      </header>
+
+      <!-- TUNER -->
+      <div class="tuner">
+        <div id="scale" class="scale" aria-label="Tuner scale">
+          <!-- 長いトラック（これが動く） -->
+          <div id="scaleTrack" class="scale-track"></div>
+          <!-- 中央固定の赤い目盛 -->
+          <div class="needle-fixed" aria-hidden="true"></div>
+        </div>
+        <div class="readout">
+          <div class="freq"><span id="freqNum">99.9</span> MHz</div>
+          <div id="stationName" class="subtitle">Drag / swipe to tune</div>
+        </div>
+      </div>
+
+      <!-- 下段 -->
+      <div class="lower">
+        <div class="meta">
+          <div id="trackTitle" class="title">—</div>
+          <div class="desc">Ambient · Loop</div>
+        </div>
+        <div class="actions">
+          <button id="prevBtn" class="icon-btn" aria-label="Previous station">
+            <svg viewBox="0 0 24 24"><path d="M19 20V4L9 12l10 8zM5 20V4h2v16H5z"/></svg>
+          </button>
+          <button id="playBtn" class="icon-btn" aria-label="Play/Pause">
+            <svg id="playIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+          </button>
+          <button id="nextBtn" class="icon-btn" aria-label="Next station">
+            <svg viewBox="0 0 24 24"><path d="M5 4v16l10-8L5 4zm12 0v16h2V4h-2z"/></svg>
+          </button>
+
+          <div class="volume" aria-label="Volume">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.06c1.48-.74 2.5-2.26 2.5-4.03z"/></svg>
+            <input id="volume" class="range" type="range" min="0" max="1" step="0.01" value="1" />
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <audio id="audio" preload="auto" playsinline></audio>
+
 <script>
   const bust = `?v=${Date.now()}`;
 
-  /* ===== プレイリスト ===== */
+  /* ===== プレイリスト（実ファイル名対応） ===== */
   const playlist = [
     { name:"Track 2",  src:`/assets/audio/Track2_WAV.m4a${bust}`,           bg:`/assets/images/bg1.jpg${bust}` },
     { name:"Track 3",  src:`/assets/audio/Track3_2025102514WAV.m4a${bust}`,  bg:`/assets/images/bg2.jpg${bust}` },
     { name:"Track 4",  src:`/assets/audio/Track4_2025100419WAV.m4a${bust}`,  bg:`/assets/images/bg3.jpg${bust}` },
-    { name:"Track 5",  src:`/assets/audio/Track5_2025101614WAV.m4a${bust}`,  bg:`/assets/images/bg4.JPG${bust}` },
+    { name:"Track 5",  src:`/assets/audio/Track5_2025101614WAV.m4a${bust}`,  bg:`/assets/images/bg4.JPG${bust}` }, /* JPG 大文字でも可 */
     { name:"Track 7",  src:`/assets/audio/Track7_2025102514WAV.m4a${bust}`,  bg:`/assets/images/bg5.jpg${bust}` },
     { name:"Track 9",  src:`/assets/audio/Track9_1812102012WAV.m4a${bust}`,  bg:`/assets/images/bg6.jpg${bust}` },
     { name:"Track10",  src:`/assets/audio/Track10_2025102447WAV.m4a${bust}`, bg:`/assets/images/bg7.jpg${bust}` },
-    { name:"Sound 3",  src:`/assets/audio/sound3.mp3${bust}`,                 bg:`/assets/images/bg9.JPG${bust}` }
+    { name:"Sound 3",  src:`/assets/audio/sound3.mp3${bust}`,                 bg:`/assets/images/bg9.JPG${bust}` }  /* JPG 大文字 */
   ];
 
-  /* ===== チューナークリック音 ===== */
+  /* ===== チューナー効果音（短いクリック音） ===== */
   const tunerClick = new Audio(`/assets/audio/tuner.mp3${bust}`);
   tunerClick.preload = "auto";
-  tunerClick.volume = 0.3; // 音量は控えめ（0〜1）
-
-  function playTunerClick() {
-    try {
-      tunerClick.currentTime = 0;
-      tunerClick.play();
-    } catch (e) {
-      // モバイルでの無視対策（初回タップ後は再生可）
-    }
+  tunerClick.volume = 0.3;
+  function playTunerClick(){
+    try { tunerClick.currentTime = 0; tunerClick.play(); } catch(_) {}
   }
 
-  /* ===== FMレンジとステーション位置 ===== */
-  const FM_MIN=88.0, FM_MAX=108.0;
+  /* ===== FMレンジ & ステーション ===== */
+  const FM_MIN = 88.0, FM_MAX = 108.0;
   const stations = playlist.map((p,i,arr)=>{
     const t = (i+1)/(arr.length+1);
     const freq = +(FM_MIN + (FM_MAX-FM_MIN)*t).toFixed(1);
@@ -43,7 +201,7 @@
   const vol = document.getElementById('volume');
   const hms = document.getElementById('hms');
   const scale = document.getElementById('scale');
-  const track = document.getElementById('track');
+  const scaleTrack = document.getElementById('scaleTrack');
   const freqNum = document.getElementById('freqNum');
   const stationName = document.getElementById('stationName');
   const trackTitle = document.getElementById('trackTitle');
@@ -91,43 +249,13 @@
   vol.addEventListener('input', e => { ensureAudio(); setAppVolume(e.target.value); });
 
   /* ===== スケール幾何 ===== */
-  let currentIndex=-1;
-  let trackWidthPx=0, viewWidthPx=0;
-  let minOffset=0, maxOffset=0;
-  let offset=0;
+  let currentIndex = -1;
+  let trackWidthPx = 0, viewWidthPx = 0;
+  let minOffset = 0, maxOffset = 0;  // translateX の範囲
+  let offset = 0;                    // 現在のオフセット
 
   const posToFreq = p => +(FM_MIN + p*(FM_MAX-FM_MIN)).toFixed(1);
   const freqToPos = f => (f-FM_MIN)/(FM_MAX-FM_MIN);
-
-  function layout(){
-    viewWidthPx = scale.clientWidth;
-    trackWidthPx = viewWidthPx * 2;
-    track.style.width = trackWidthPx + 'px';
-    minOffset = viewWidthPx - trackWidthPx;
-    maxOffset = 0;
-    track.querySelectorAll('.station').forEach(el=>el.remove());
-    stations.forEach((s)=>{
-      const t = freqToPos(s.freq);
-      const x = t * trackWidthPx;
-      const m = document.createElement('div');
-      m.className='station';
-      m.style.left = (x|0) + 'px';
-      track.appendChild(m);
-    });
-    if(currentIndex>=0) alignToStation(currentIndex, false);
-  }
-
-  function setOffset(px){
-    offset = Math.max(minOffset, Math.min(maxOffset, px));
-    track.style.transform = `translateX(${offset}px)`;
-    const centerX = viewWidthPx/2;
-    const pos = (centerX - offset) / trackWidthPx;
-    const f = posToFreq(pos);
-    freqNum.textContent = f.toFixed(1);
-    const near = nearestByPos(pos);
-    highlightStation(near.i);
-    stationName.textContent = `${stations[near.i].freq.toFixed(1)} MHz — ${playlist[near.i].name}`;
-  }
 
   function nearestByPos(p){
     let best={i:0,d:Infinity,t:0};
@@ -139,8 +267,20 @@
     return best;
   }
   function highlightStation(i){
-    const nodes = track.querySelectorAll('.station');
+    const nodes = scaleTrack.querySelectorAll('.station');
     nodes.forEach((n,idx)=>n.classList.toggle('is-hot', idx===i));
+  }
+
+  function setOffset(px){
+    offset = Math.max(minOffset, Math.min(maxOffset, px));
+    scaleTrack.style.transform = `translateX(${offset}px)`;
+    const centerX = viewWidthPx/2;
+    const pos = (centerX - offset) / trackWidthPx; // 0..1
+    const f = posToFreq(pos);
+    freqNum.textContent = f.toFixed(1);
+    const near = nearestByPos(pos);
+    highlightStation(near.i);
+    stationName.textContent = `${stations[near.i].freq.toFixed(1)} MHz — ${playlist[near.i].name}`;
   }
 
   function alignToStation(i, play=true){
@@ -150,8 +290,30 @@
     const centerX  = viewWidthPx/2;
     const targetOffset = centerX - stationX;
     setOffset(targetOffset);
-    playTunerClick(); // スナップ時にカチッ音
+    playTunerClick(); // スナップ時のカチッ音
     if(play) loadByIndex(i,true);
+  }
+
+  function layout(){
+    viewWidthPx = scale.clientWidth;
+    trackWidthPx = viewWidthPx * 2;
+    scaleTrack.style.width = trackWidthPx + 'px';
+    minOffset = viewWidthPx - trackWidthPx;
+    maxOffset = 0;
+
+    // ステーション目盛を再構築
+    scaleTrack.querySelectorAll('.station').forEach(el=>el.remove());
+    stations.forEach((s)=>{
+      const t = freqToPos(s.freq);
+      const x = t * trackWidthPx;
+      const m = document.createElement('div');
+      m.className='station';
+      m.style.left = (x|0) + 'px';
+      scaleTrack.appendChild(m);
+    });
+
+    // 現在曲があればセンターへ合わせる
+    if(currentIndex>=0) alignToStation(currentIndex, false);
   }
 
   /* ===== 再生制御 ===== */
@@ -173,7 +335,7 @@
       : '<path d="M8 5v14l11-7z"/>';
   }
 
-  /* ===== ドラッグ操作 ===== */
+  /* ===== ドラッグ操作（トラックを動かす） ===== */
   let dragging=false, lastX=0, lastClickTime=0;
   function clientX(e){ return (e.touches? e.touches[0].clientX : e.clientX); }
   function begin(e){ dragging=true; lastX=clientX(e); e.preventDefault(); playTunerClick(); }
@@ -183,7 +345,7 @@
     const dx = x - lastX;
     lastX = x;
     setOffset(offset + dx);
-    // 間隔をあけてクリック音
+    // ドラッグ連続音（300ms間隔）
     const now = performance.now();
     if(now - lastClickTime > 300){ playTunerClick(); lastClickTime = now; }
   }
@@ -210,8 +372,8 @@
     if(audio.paused){ await audio.play().catch(()=>{}); updatePlayIcon(true); }
     else{ audio.pause(); updatePlayIcon(false); }
   });
-  document.getElementById('prevBtn').addEventListener('click',()=>alignToStation(currentIndex-1,true));
-  document.getElementById('nextBtn').addEventListener('click',()=>alignToStation(currentIndex+1,true));
+  prevBtn.addEventListener('click',()=>alignToStation(currentIndex-1,true));
+  nextBtn.addEventListener('click',()=>alignToStation(currentIndex+1,true));
 
   /* ===== 時間表示 & 連続再生 ===== */
   const pad=n=>String(n).padStart(2,'0');
@@ -222,19 +384,16 @@
   audio.addEventListener('ended',()=>alignToStation(currentIndex+1,true));
 
   /* ===== 初期化 ===== */
-  window.addEventListener('resize', ()=>layout());
+  window.addEventListener('resize', layout);
   (function init(){
     layout();
-    const centerPos = 0.5;
-    const near = nearestByPos(centerPos);
-    const t = freqToPos(stations[near.i].freq);
-    const stationX = t * trackWidthPx;
-    const centerX = viewWidthPx/2;
-    offset = centerX - stationX;
-    track.style.transform = `translateX(${offset}px)`;
+    // 中央に近い局を選んで初期配置（再生はしない）
+    const near = nearestByPos(0.5);
+    alignToStation(near.i, false);
     ensureAudio();
     const saved = localStorage.getItem(VOL_KEY);
     if(saved!=null) setAppVolume(saved);
-    loadByIndex(near.i,false);
   })();
 </script>
+</body>
+</html>
