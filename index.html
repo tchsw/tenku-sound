@@ -5,9 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
 <title>TENKU Radio Player</title>
 <style>
-  :root{
-    --ink:#0b0b0b; --paper:#f3eee8; --tick:#00000055; --active:#111; --accent:#d44a2b;
-  }
+  :root{ --ink:#0b0b0b; --paper:#f3eee8; --tick:#00000055; --active:#111; --accent:#d44a2b; }
   *{box-sizing:border-box} html,body{height:100%}
   body{ margin:0; font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial;
         background:var(--paper); color:var(--ink); -webkit-tap-highlight-color:transparent; }
@@ -37,7 +35,7 @@
   }
   .segment.segL{ left:0; } .segment.segC{ left:33.3333%; } .segment.segR{ left:66.6666%; }
 
-  /* 再生可能な局マーカーのみ太線で描画（プレイリスト由来） */
+  /* 再生可能な局マーカーのみ太線で描画 */
   .station{position:absolute; top:0; height:100%; width:6px; background:#111; opacity:.28; transform:translateX(-3px); border-radius:2px;}
   .station.is-hot{ background:var(--accent); opacity:.9; }
 
@@ -57,9 +55,13 @@
   .title{font-weight:700; font-size:1.05rem;}
   .desc{font-size:.82rem; opacity:.7}
   .actions{display:flex; align-items:center; gap:14px; flex-wrap:wrap;}
-  .icon-btn{background:#fff; border:1px solid #00000018; border-radius:12px; padding:12px; display:grid; place-items:center;}
+  .icon-btn{background:#fff; border:1px solid #00000018; border-radius:12px; padding:12px; display:grid; place-items:center; transition:box-shadow .15s ease, border-color .15s ease;}
   .icon-btn svg{width:26px; height:26px; fill:#111}
   .icon-btn:active{transform:translateY(1px)}
+  /* トグル（リピートONの見た目） */
+  .icon-btn.toggle.is-active{ border-color: var(--accent); box-shadow:0 0 0 2px #d44a2b33; }
+  .icon-btn.toggle.is-active svg{ fill: var(--accent); }
+
   .volume{display:flex; align-items:center; gap:10px; margin-left:auto; width:100%;}
   .volume svg{width:18px; height:18px; fill:#111}
   .range{-webkit-appearance:none; width:100%; background:transparent;}
@@ -124,6 +126,15 @@
             <svg viewBox="0 0 24 24"><path d="M5 4v16l10-8L5 4zm12 0v16h2V4h-2z"/></svg>
           </button>
 
+          <!-- 1曲リピート -->
+          <button id="repeatOneBtn" class="icon-btn toggle" aria-label="Repeat one" aria-pressed="false" title="一曲リピート">
+            <!-- repeat-oneアイコン（SVG） -->
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M7 7h7V5l3 3-3 3V9H7a3 3 0 0 0-3 3v1H2v-1a5 5 0 0 1 5-5zm10 10H10v2l-3-3 3-3v2h7a3 3 0 0 0 3-3v-1h2v1a5 5 0 0 1-5 5z"/>
+              <text x="12" y="13.5" text-anchor="middle" font-size="7" font-family="ui-sans-serif,Arial" fill="currentColor">1</text>
+            </svg>
+          </button>
+
           <div class="volume" aria-label="Volume">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.06c1.48-.74 2.5-2.26 2.5-4.03z"/></svg>
             <input id="volume" class="range" type="range" min="0" max="1" step="0.01" value="1" />
@@ -156,6 +167,7 @@
   const playIcon = document.getElementById('playIcon');
   const prevBtn = document.getElementById('prevBtn');
   const nextBtn = document.getElementById('nextBtn');
+  const repeatOneBtn = document.getElementById('repeatOneBtn');
   const vol = document.getElementById('volume');
   const hms = document.getElementById('hms');
   const scale = document.getElementById('scale');
@@ -227,6 +239,7 @@
   let currentIndex=-1;
   let viewW=1, segW=1, beltOffset=0;
   let dragging=false, lastX=0, lastClick=0, animId=null;
+  let repeatOne=false;  // ← 1曲リピート状態
 
   const posToFreq = p => +(FM_MIN + p * (FM_MAX-FM_MIN)).toFixed(1);
   const freqToPos = f => (f - FM_MIN) / (FM_MAX-FM_MIN);
@@ -334,11 +347,7 @@
       const p = Math.min(1, (now - t0) / dur);
       setBeltOffset(start + total * ease(p));
       if(p < 1) animId = requestAnimationFrame(tick);
-      else {
-        // 最終的に厳密にターゲットへ固定（浮動小数の誤差対策）
-        setBeltOffset(target);
-        onDone && onDone();
-      }
+      else { setBeltOffset(target); onDone && onDone(); }
     };
     animId = requestAnimationFrame(tick);
   }
@@ -348,13 +357,9 @@
     i = (i + playlist.length) % playlist.length;
     currentIndex=i;
     const targetOffset = computeTargetOffsetByIndex(i);
-
-    // 1) まず即時に再生を開始（時差ゼロ）
     playClick();
-    startTrack(i);
-
-    // 2) 見た目はスムースに中央へ補完。補完完了後も厳密に中央に合わせ直す。
-    animateToOffset(targetOffset);
+    startTrack(i);                 // ← 時差なく即再生
+    animateToOffset(targetOffset); // ← 見た目はスムースに中央へ
     highlightStation(i);
   }
 
@@ -372,7 +377,7 @@
     if(!dragging) return; dragging=false;
     const centerPos = (( (scale.clientWidth/2 - beltOffset) / segW ) % 1 + 1) % 1;
     const near = nearestStation(centerPos);
-    snapAndPlay(near.i); // ← 目離し時：即再生＋スムース補完＋中央線上に厳密配置
+    snapAndPlay(near.i);
   }
   scale.addEventListener('pointerdown',begin,{passive:false});
   window.addEventListener('pointermove',move,{passive:false});
@@ -391,10 +396,26 @@
     if(e.key==='ArrowLeft')  snapAndPlay((currentIndex<0?0:currentIndex)-1);
   });
 
-  /* 時間/連続再生 */
+  // 1曲リピート切り替え
+  repeatOneBtn.addEventListener('click', ()=>{
+    repeatOne = !repeatOne;
+    repeatOneBtn.classList.toggle('is-active', repeatOne);
+    repeatOneBtn.setAttribute('aria-pressed', String(repeatOne));
+  });
+
+  /* 時間/連続再生（自動で次曲 or 1曲リピート） */
   const pad=n=>String(n).padStart(2,'0');
   audio.addEventListener('timeupdate',()=>{ const t=Math.floor(audio.currentTime); hms.textContent=`${pad((t/60)|0)}:${pad(t%60)}`; });
-  audio.addEventListener('ended',()=>snapAndPlay(currentIndex+1));
+  audio.addEventListener('ended',()=>{
+    if(repeatOne){
+      // 1曲リピート：中央線は既に一致しているので、そのまま頭出し＆再生
+      audio.currentTime = 0;
+      audio.play().then(()=>updatePlayIcon(true)).catch(()=>{});
+    }else{
+      // 次曲へ
+      snapAndPlay(currentIndex+1);
+    }
+  });
 
   /* 初期化 */
   function initialCenter(i){
@@ -405,12 +426,27 @@
 
   window.addEventListener('resize', ()=>{ const i=currentIndex<0?0:currentIndex; layout(); initialCenter(i); });
 
+  function layout(){
+    // 画面幅等から各セグメント＆マーカーを再構成
+    viewW = scale.clientWidth || 1;
+    segW  = viewW;
+    [segL,segC,segR].forEach(seg => seg.querySelectorAll('.station').forEach(n=>n.remove()));
+    const addMarkers = (segEl, segIndex) => {
+      stations.forEach(s=>{
+        const x = freqToPos(s.freq) * segW + segIndex*segW;
+        const m=document.createElement('div'); m.className='station playable'; m.style.left = `${x}px`; segEl.appendChild(m);
+      });
+    };
+    addMarkers(segL, -1); addMarkers(segC, 0); addMarkers(segR, +1);
+    setBeltOffset(beltOffset);
+  }
+
   (async function init(){
     await ensureAudio();
     layout();
     // 中央に最も近い局を初期表示（自動再生はしない）
     let best={i:0,d:1e9};
-    stations.forEach((s,i)=>{ const d=Math.min(Math.abs(freqToPos(s.freq)-0.5), 1-Math.abs(freqToPos(s.freq)-0.5)); if(d<best.d) best={i,d}; });
+    stations.forEach((s,i)=>{ const p=freqToPos(s.freq); const d=Math.min(Math.abs(p-0.5), 1-Math.abs(p-0.5)); if(d<best.d) best={i,d}; });
     currentIndex = best.i;
     initialCenter(best.i);
     // 初回は読み込みのみ
