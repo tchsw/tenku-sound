@@ -27,12 +27,13 @@
   /* ====== レイアウト（モバイル先行） ====== */
   .wrap{
     min-height:100dvh; display:flex; align-items:center; justify-content:center;
-    padding:16px; /* モバイルは狭め */
+    padding:16px;
   }
   .panel{
     width:100%;
     max-width:920px;
-    background:##f8f4e6; border:1px solid #00000018; border-radius:14px;
+    background:#f8f4e6; /* ← 修正 */
+    border:1px solid #00000018; border-radius:14px;
     box-shadow:0 12px 40px rgba(0,0,0,.08);
   }
   .panel__top{
@@ -82,6 +83,14 @@
   .range::-webkit-slider-thumb{-webkit-appearance:none; width:16px; height:16px; border-radius:50%; background:#111; margin-top:-7px;}
   .range::-moz-range-track{height:2px; background:#111;}
   .range::-moz-range-thumb{width:16px; height:16px; border:none; border-radius:50%; background:#111;}
+
+  /* 軽いトースト */
+  .toast{
+    position:fixed; left:50%; bottom:12px; transform:translateX(-50%);
+    background:#111; color:#fff; padding:8px 12px; border-radius:999px;
+    font-size:.78rem; opacity:0; pointer-events:none; transition:opacity .3s ease;
+  }
+  .toast.show{opacity:.9;}
 
   /* ====== ブレークポイント ====== */
   @media (min-width:560px){
@@ -152,6 +161,8 @@
     </section>
   </div>
 
+  <div id="toast" class="toast">音量はデバイス本体と連動しません（このプレイヤー内の音量です）</div>
+
   <audio id="audio" preload="auto" playsinline></audio>
 
 <script>
@@ -191,6 +202,7 @@
   const trackTitle = document.getElementById('trackTitle');
   const bgA = document.getElementById('bgA');
   const bgB = document.getElementById('bgB');
+  const toast = document.getElementById('toast');
 
   // 背景クロスフェード
   let bgOnA = true;
@@ -207,8 +219,9 @@
     img.src = url;
   }
 
-  // Web Audio（iOS音量）
+  // Web Audio（iOS音量） + 永続化
   let ctx=null, gain=null, srcNode=null;
+  const VOL_KEY='tenku_radio_volume';
   function ensureAudio(){
     if(ctx) return;
     const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -218,9 +231,35 @@
     gain = ctx.createGain();
     srcNode && srcNode.connect(gain);
     gain.connect(ctx.destination);
-    gain.gain.value = +vol.value;
+    // 保存済み音量
+    const saved = localStorage.getItem(VOL_KEY);
+    if(saved!=null){
+      vol.value = saved;
+    }
+    const v = +vol.value;
+    gain.gain.value = v;
+    audio.volume = v; // フォールバック
   }
-  vol.addEventListener('input', e => { ensureAudio(); gain ? (gain.gain.value=+e.target.value) : (audio.volume=+e.target.value); });
+  function setAppVolume(v){
+    const n = Math.max(0, Math.min(1, +v));
+    if(gain){ gain.gain.value = n; }
+    audio.volume = n;
+    localStorage.setItem(VOL_KEY, String(n));
+  }
+  vol.addEventListener('input', e => {
+    ensureAudio();
+    setAppVolume(e.target.value);
+  });
+
+  // 初回だけトースト表示（2.5秒）
+  (function toastOnce(){
+    const KEY='tenku_radio_toast_v1';
+    if(!localStorage.getItem(KEY)){
+      toast.classList.add('show');
+      setTimeout(()=>toast.classList.remove('show'), 2500);
+      localStorage.setItem(KEY,'1');
+    }
+  })();
 
   // 針と選局
   let pos=.5, dragging=false, currentIndex=-1;
@@ -266,7 +305,11 @@
     audio.load();
     trackTitle.textContent=tr.name;
     swapBg(tr.bg);
-    if(auto){ ensureAudio(); ctx && ctx.resume(); audio.play().then(()=>updatePlayIcon(true)).catch(()=>{}); }
+    if(auto){
+      ensureAudio();
+      ctx && ctx.resume();
+      audio.play().then(()=>updatePlayIcon(true)).catch(()=>{});
+    }
     const t=freqToPos(stations[i].freq);
     setNeedle(t);
   }
@@ -325,6 +368,9 @@
     setNeedle(.5);
     const n=nearestStation(.5);
     setNeedle(n.t);
+    ensureAudio();
+    // 保存音量を適用
+    setAppVolume(localStorage.getItem('tenku_radio_volume') ?? vol.value);
     loadByIndex(n.i,false);
   })();
 </script>
