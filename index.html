@@ -10,6 +10,7 @@
     --paper:#f3eee8;
     --tick:#00000055;
     --active:#111;
+    --accent:#d44a2b; /* 中央固定の赤い目盛 */
   }
   *{box-sizing:border-box}
   html,body{height:100%}
@@ -25,14 +26,10 @@
   .bg__layer.is-active{opacity:.22;}
 
   /* ====== レイアウト（モバイル先行） ====== */
-  .wrap{
-    min-height:100dvh; display:flex; align-items:center; justify-content:center;
-    padding:16px; /* モバイルは狭め */
-  }
+  .wrap{min-height:100dvh; display:flex; align-items:center; justify-content:center; padding:16px;}
   .panel{
-    width:100%;
-    max-width:920px;
-    background:##f8f4e6; border:1px solid #00000018; border-radius:14px;
+    width:100%; max-width:920px;
+    background:#f8f4e6; border:1px solid #00000018; border-radius:14px;
     box-shadow:0 12px 40px rgba(0,0,0,.08);
   }
   .panel__top{
@@ -44,24 +41,32 @@
   .timebox .label{font-size:.7rem; opacity:.6}
   .timebox .hms{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:1.05rem}
 
-  /* ====== TUNER ====== */
+  /* ====== TUNER（中央赤目盛 固定／トラック側が動く） ====== */
   .tuner{position:relative; padding:12px 14px 8px; display:flex; flex-direction:column; gap:10px;}
   .scale{
     position:relative; height:64px; border-radius:10px; background:#fdfdfd;
     border:1px solid #00000018; overflow:hidden; touch-action:none;
   }
-  .scale::before{
-    content:""; position:absolute; inset:0;
+  /* 中身の長いトラックを左右に動かす */
+  .scale-track{
+    position:absolute; top:0; left:0; height:100%;
+    width:200%; /* ビューポートの2倍幅（余白を持たせる） */
+    will-change: transform;
     background:
       repeating-linear-gradient(to right, var(--tick) 0px, var(--tick) 1px, transparent 1px, transparent 7px),
       repeating-linear-gradient(to right, var(--tick) 0px, var(--tick) 2px, transparent 2px, transparent 40px);
-    opacity:.9;
   }
   .station{position:absolute; top:0; height:100%; width:4px; background:#111; opacity:.18; transform:translateX(-2px);}
   .station.is-hot{opacity:.36;}
-  .needle{--x:50%; position:absolute; top:0; bottom:0; width:2px; background:var(--active); left:var(--x); transform:translateX(-1px);}
-  .knob{position:absolute; bottom:-10px; left:50%; transform:translate(-50%,0);
-        width:24px; height:24px; border:2px solid var(--active); border-radius:50%; background:#fff;}
+
+  /* 中央固定の赤い目盛 */
+  .needle-fixed{
+    position:absolute; top:0; bottom:0; left:50%; width:3px; transform:translateX(-1.5px);
+    background:linear-gradient(to bottom, transparent 6px, var(--accent) 6px, var(--accent) calc(100% - 6px), transparent calc(100% - 6px));
+    box-shadow:0 0 0 1px #00000010 inset, 0 0 12px #d44a2b55;
+    pointer-events:none;
+  }
+
   .readout{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:2px 2px 0;}
   .freq{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:1.25rem; font-weight:700}
   .subtitle{font-size:.78rem; opacity:.65; text-align:right}
@@ -118,7 +123,10 @@
       <!-- TUNER -->
       <div class="tuner">
         <div id="scale" class="scale" aria-label="Tuner scale">
-          <div id="needle" class="needle" aria-hidden="true"><i class="knob"></i></div>
+          <!-- 長いトラック（これが動く） -->
+          <div id="track" class="scale-track"></div>
+          <!-- 中央固定の赤い目盛 -->
+          <div class="needle-fixed" aria-hidden="true"></div>
         </div>
         <div class="readout">
           <div class="freq"><span id="freqNum">99.9</span> MHz</div>
@@ -155,29 +163,29 @@
   <audio id="audio" preload="auto" playsinline></audio>
 
 <script>
-  const bust=?v=${Date.now()};
+  const bust=`?v=${Date.now()}`;
 
-  // プレイリスト（実ファイル名に対応）
+  /* ===== プレイリスト（実ファイル名対応） ===== */
   const playlist = [
-    { name:"Track 2",  src:/assets/audio/Track2_WAV.m4a${bust},           bg:/assets/images/bg1.jpg${bust} },
-    { name:"Track 3",  src:/assets/audio/Track3_2025102514WAV.m4a${bust},  bg:/assets/images/bg2.jpg${bust} },
-    { name:"Track 4",  src:/assets/audio/Track4_2025100419WAV.m4a${bust},  bg:/assets/images/bg3.jpg${bust} },
-    { name:"Track 5",  src:/assets/audio/Track5_2025101614WAV.m4a${bust},  bg:/assets/images/bg4.JPG${bust} }, // 大文字
-    { name:"Track 7",  src:/assets/audio/Track7_2025102514WAV.m4a${bust},  bg:/assets/images/bg5.jpg${bust} },
-    { name:"Track 9",  src:/assets/audio/Track9_1812102012WAV.m4a${bust},  bg:/assets/images/bg6.jpg${bust} },
-    { name:"Track10",  src:/assets/audio/Track10_2025102447WAV.m4a${bust}, bg:/assets/images/bg7.jpg${bust} },
-    { name:"Sound 3",  src:/assets/audio/sound3.mp3${bust},                 bg:/assets/images/bg9.JPG${bust} }  // 大文字
+    { name:"Track 2",  src:`/assets/audio/Track2_WAV.m4a${bust}`,           bg:`/assets/images/bg1.jpg${bust}` },
+    { name:"Track 3",  src:`/assets/audio/Track3_2025102514WAV.m4a${bust}`,  bg:`/assets/images/bg2.jpg${bust}` },
+    { name:"Track 4",  src:`/assets/audio/Track4_2025100419WAV.m4a${bust}`,  bg:`/assets/images/bg3.jpg${bust}` },
+    { name:"Track 5",  src:`/assets/audio/Track5_2025101614WAV.m4a${bust}`,  bg:`/assets/images/bg4.JPG${bust}` },
+    { name:"Track 7",  src:`/assets/audio/Track7_2025102514WAV.m4a${bust}`,  bg:`/assets/images/bg5.jpg${bust}` },
+    { name:"Track 9",  src:`/assets/audio/Track9_1812102012WAV.m4a${bust}`,  bg:`/assets/images/bg6.jpg${bust}` },
+    { name:"Track10",  src:`/assets/audio/Track10_2025102447WAV.m4a${bust}`, bg:`/assets/images/bg7.jpg${bust}` },
+    { name:"Sound 3",  src:`/assets/audio/sound3.mp3${bust}`,                 bg:`/assets/images/bg9.JPG${bust}` }
   ];
 
-  // FMレンジ & ステーション
+  /* ===== FMレンジとステーション位置 ===== */
   const FM_MIN=88.0, FM_MAX=108.0;
   const stations = playlist.map((p,i,arr)=>{
-    const t = (i+1)/(arr.length+1);
+    const t = (i+1)/(arr.length+1); // 0..1の配置
     const freq = +(FM_MIN + (FM_MAX-FM_MIN)*t).toFixed(1);
     return { freq, title:p.name };
   });
 
-  // 要素
+  /* ===== 要素参照 ===== */
   const audio = document.getElementById('audio');
   const playIcon = document.getElementById('playIcon');
   const prevBtn = document.getElementById('prevBtn');
@@ -185,21 +193,21 @@
   const vol = document.getElementById('volume');
   const hms = document.getElementById('hms');
   const scale = document.getElementById('scale');
-  const needle = document.getElementById('needle');
+  const track = document.getElementById('track');
   const freqNum = document.getElementById('freqNum');
   const stationName = document.getElementById('stationName');
   const trackTitle = document.getElementById('trackTitle');
   const bgA = document.getElementById('bgA');
   const bgB = document.getElementById('bgB');
 
-  // 背景クロスフェード
+  /* ===== 背景クロスフェード ===== */
   let bgOnA = true;
   function swapBg(url){
     const front = bgOnA ? bgB : bgA;
     const back  = bgOnA ? bgA : bgB;
     const img = new Image();
     img.onload = ()=>{
-      front.style.backgroundImage = url("${url}");
+      front.style.backgroundImage = `url("${url}")`;
       front.classList.add('is-active');
       back.classList.remove('is-active');
       bgOnA = !bgOnA;
@@ -207,8 +215,9 @@
     img.src = url;
   }
 
-  // Web Audio（iOS音量）
+  /* ===== Web Audio（アプリ内ボリューム） ===== */
   let ctx=null, gain=null, srcNode=null;
+  const VOL_KEY='tenku_radio_volume';
   function ensureAudio(){
     if(ctx) return;
     const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -218,28 +227,63 @@
     gain = ctx.createGain();
     srcNode && srcNode.connect(gain);
     gain.connect(ctx.destination);
-    gain.gain.value = +vol.value;
+    const saved = localStorage.getItem(VOL_KEY);
+    if(saved!=null) vol.value = saved;
+    const v = +vol.value;
+    gain.gain.value = v; audio.volume = v;
   }
-  vol.addEventListener('input', e => { ensureAudio(); gain ? (gain.gain.value=+e.target.value) : (audio.volume=+e.target.value); });
+  function setAppVolume(v){
+    const n = Math.max(0, Math.min(1, +v));
+    if(gain) gain.gain.value = n;
+    audio.volume = n;
+    localStorage.setItem(VOL_KEY, String(n));
+  }
+  vol.addEventListener('input', e => { ensureAudio(); setAppVolume(e.target.value); });
 
-  // 針と選局
-  let pos=.5, dragging=false, currentIndex=-1;
-  const markers=[];
-  (function drawStations(){
-    stations.forEach(s=>{
-      const t = (s.freq - FM_MIN)/(FM_MAX-FM_MIN);
+  /* ===== スケール幾何（中央固定 / トラック移動） ===== */
+  let currentIndex=-1;
+  let trackWidthPx=0, viewWidthPx=0;
+  let minOffset=0, maxOffset=0;  // track.style.transform = translateX(offset)
+  let offset=0;                  // 現在のオフセット（px）
+
+  const posToFreq = p => +(FM_MIN + p*(FM_MAX-FM_MIN)).toFixed(1);
+  const freqToPos = f => (f-FM_MIN)/(FM_MAX-FM_MIN);
+
+  function layout(){
+    viewWidthPx = scale.clientWidth;
+    trackWidthPx = viewWidthPx * 2;          // 200%
+    track.style.width = trackWidthPx + 'px';
+    minOffset = viewWidthPx - trackWidthPx;  // 左に行ける最小（負）
+    maxOffset = 0;                           // 右に行ける最大
+    // 目盛（ステーションバー）再配置
+    track.querySelectorAll('.station').forEach(el=>el.remove());
+    stations.forEach((s)=>{
+      const t = freqToPos(s.freq);
+      const x = t * trackWidthPx;
       const m = document.createElement('div');
       m.className='station';
-      m.style.left=calc(${(t*100).toFixed(4)}% - 2px);
-      scale.appendChild(m);
-      markers.push(m);
+      m.style.left = (x|0) + 'px';
+      track.appendChild(m);
     });
-  })();
+    // 現在の曲があればセンター合わせ
+    if(currentIndex>=0) alignToStation(currentIndex, false);
+  }
 
-  const posToFreq=p=>+(FM_MIN + p*(FM_MAX-FM_MIN)).toFixed(1);
-  const freqToPos=f=>(f-FM_MIN)/(FM_MAX-FM_MIN);
+  function setOffset(px){
+    offset = Math.max(minOffset, Math.min(maxOffset, px));
+    track.style.transform = `translateX(${offset}px)`;
+    // 中央の周波数を計算して表示
+    const centerX = viewWidthPx/2;
+    const pos = (centerX - offset) / trackWidthPx; // 0..1
+    const f = posToFreq(pos);
+    freqNum.textContent = f.toFixed(1);
+    // 近傍のステーション（UI表示のみ）
+    const near = nearestByPos(pos);
+    highlightStation(near.i);
+    stationName.textContent = `${stations[near.i].freq.toFixed(1)} MHz — ${playlist[near.i].name}`;
+  }
 
-  function nearestStation(p){
+  function nearestByPos(p){
     let best={i:0,d:Infinity,t:0};
     stations.forEach((s,i)=>{
       const t=freqToPos(s.freq);
@@ -248,27 +292,33 @@
     });
     return best;
   }
-  function setNeedle(p){
-    pos=Math.max(0,Math.min(1,p));
-    needle.style.setProperty('--x',${pos*100}%);
-    const f=posToFreq(pos);
-    freqNum.textContent=f.toFixed(1);
-    const near=nearestStation(pos);
-    markers.forEach((m,i)=>m.classList.toggle('is-hot',i===near.i));
-    stationName.textContent=${stations[near.i].freq.toFixed(1)} MHz — ${playlist[near.i].name};
+  function highlightStation(i){
+    const nodes = track.querySelectorAll('.station');
+    nodes.forEach((n,idx)=>n.classList.toggle('is-hot', idx===i));
   }
+
+  function alignToStation(i, play=true){
+    i=(i+playlist.length)%playlist.length;
+    const t = freqToPos(stations[i].freq);
+    const stationX = t * trackWidthPx;
+    const centerX  = viewWidthPx/2;
+    const targetOffset = centerX - stationX;
+    setOffset(targetOffset);
+    if(play) loadByIndex(i,true);
+  }
+
+  /* ===== 再生制御 ===== */
   function loadByIndex(i,auto=true){
     i=(i+playlist.length)%playlist.length;
     currentIndex=i;
     const tr=playlist[i];
     const isMp3=/\.mp3\?v=/.test(tr.src);
-    audio.innerHTML=<source src="${tr.src}" type="${isMp3?'audio/mpeg':'audio/mp4'}">;
+    audio.innerHTML=`<source src="${tr.src}" type="${isMp3?'audio/mpeg':'audio/mp4'}">`;
     audio.load();
     trackTitle.textContent=tr.name;
     swapBg(tr.bg);
     if(auto){ ensureAudio(); ctx && ctx.resume(); audio.play().then(()=>updatePlayIcon(true)).catch(()=>{}); }
-    const t=freqToPos(stations[i].freq);
-    setNeedle(t);
+    highlightStation(i);
   }
   function updatePlayIcon(playing){
     playIcon.innerHTML = playing
@@ -276,21 +326,23 @@
       : '<path d="M8 5v14l11-7z"/>';
   }
 
-  // 操作（タッチ/マウス/キー）
+  /* ===== ドラッグ操作（トラックを動かす） ===== */
+  let dragging=false, lastX=0;
   function clientX(e){ return (e.touches? e.touches[0].clientX : e.clientX); }
-  function begin(e){ dragging=true; move(e); e.preventDefault(); }
+  function begin(e){ dragging=true; lastX=clientX(e); e.preventDefault(); }
   function move(e){
     if(!dragging) return;
-    const rect=scale.getBoundingClientRect();
-    const p=(clientX(e)-rect.left)/rect.width;
-    setNeedle(p);
+    const x = clientX(e);
+    const dx = x - lastX;
+    lastX = x;
+    setOffset(offset + dx); // 指の移動量だけトラックを動かす
   }
   function end(){
-    if(!dragging) return;
-    dragging=false;
-    const near=nearestStation(pos);
-    setNeedle(near.t);
-    loadByIndex(near.i,true);
+    if(!dragging) return; dragging=false;
+    // 今のセンターポジションに最も近いステーションへスナップ
+    const centerPos = (viewWidthPx/2 - offset) / trackWidthPx;
+    const near = nearestByPos(centerPos);
+    alignToStation(near.i, true);
   }
   scale.addEventListener('pointerdown',begin,{passive:false});
   window.addEventListener('pointermove',move,{passive:false});
@@ -299,33 +351,43 @@
   window.addEventListener('touchmove',move,{passive:false});
   window.addEventListener('touchend',end,{passive:false});
 
+  /* ===== キー & ボタン ===== */
   window.addEventListener('keydown',e=>{
-    if(e.key==='ArrowRight') loadByIndex((currentIndex<0?0:currentIndex)+1,true);
-    if(e.key==='ArrowLeft')  loadByIndex((currentIndex<0?0:currentIndex)-1,true);
+    if(e.key==='ArrowRight') alignToStation((currentIndex<0?0:currentIndex)+1, true);
+    if(e.key==='ArrowLeft')  alignToStation((currentIndex<0?0:currentIndex)-1, true);
   });
-
   document.getElementById('playBtn').addEventListener('click',async()=>{
     ensureAudio();
     if(audio.paused){ await audio.play().catch(()=>{}); updatePlayIcon(true); }
     else{ audio.pause(); updatePlayIcon(false); }
   });
-  document.getElementById('prevBtn').addEventListener('click',()=>loadByIndex(currentIndex-1,true));
-  document.getElementById('nextBtn').addEventListener('click',()=>loadByIndex(currentIndex+1,true));
+  document.getElementById('prevBtn').addEventListener('click',()=>alignToStation(currentIndex-1,true));
+  document.getElementById('nextBtn').addEventListener('click',()=>alignToStation(currentIndex+1,true));
 
-  // 時間表示 & 連続再生
+  /* ===== 時間表示 & 連続再生 ===== */
   const pad=n=>String(n).padStart(2,'0');
   audio.addEventListener('timeupdate',()=>{
     const t=Math.floor(audio.currentTime);
-    hms.textContent=${pad((t/60)|0)}:${pad(t%60)};
+    hms.textContent=`${pad((t/60)|0)}:${pad(t%60)}`;
   });
-  audio.addEventListener('ended',()=>loadByIndex(currentIndex+1,true));
+  audio.addEventListener('ended',()=>alignToStation(currentIndex+1,true));
 
-  // 初期化
+  /* ===== レイアウト初期化 ===== */
+  window.addEventListener('resize', ()=>layout());
   (function init(){
-    setNeedle(.5);
-    const n=nearestStation(.5);
-    setNeedle(n.t);
-    loadByIndex(n.i,false);
+    layout();
+    // センター近傍の局を選ぶ
+    const centerPos = 0.5;
+    const centerX = viewWidthPx/2;
+    const near = nearestByPos(centerPos);
+    // まずセンターにスナップ（再生はしない）
+    const t = freqToPos(stations[near.i].freq);
+    const stationX = t * trackWidthPx;
+    setOffset(centerX - stationX);
+    ensureAudio();
+    const saved = localStorage.getItem(VOL_KEY);
+    if(saved!=null) setAppVolume(saved);
+    loadByIndex(near.i,false);
   })();
 </script>
 </body>
