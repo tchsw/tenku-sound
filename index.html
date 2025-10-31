@@ -1,328 +1,226 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>TENKU Sound Player</title>
-  <style>
-    :root{
-      --accent:#6F0001;         /* 外周リング & ノブ */
-      --accent-weak:#ffffff40;  /* リングの残り */
-      --text:#fff;
-    }
-
-    *{ box-sizing:border-box; }
-    html,body{ height:100%; }
-    body{
-      margin:0;
-      font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-      color:var(--text);
-      background:#000;
-      min-height:100dvh;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:flex-start;
-      text-align:center;
-      padding:18px 14px 96px;
-      -webkit-text-size-adjust:100%;
-      user-select:none;
-    }
-    input, button, select, textarea { font-size:16px; }
-
-    /* 背景（写真クロスフェード） */
-    .bg__layer{
-      position:fixed; inset:0;
-      background-size:cover; background-position:center;
-      opacity:0; transition:opacity .6s ease;
-      z-index:-2;
-    }
-    .bg__layer.is-active{ opacity:1; }
-
-    /* ぼかしレイヤ（背景のみ。コントロールはシンプルへ回帰） */
-    .glass-bg{
-      position:fixed; inset:0;
-      background: radial-gradient(120% 120% at 50% 0%, rgba(255,255,255,.08), rgba(0,0,0,.38));
-      backdrop-filter: saturate(120%) blur(14px);
-      -webkit-backdrop-filter: saturate(120%) blur(14px);
-      z-index:-1;
-    }
-
-    .topbar{
-      width:100%; max-width:520px;
-      display:flex; align-items:center; justify-content:center;
-      gap:8px; margin:4px 0 8px;
-      opacity:.95;
-      text-shadow:0 1px 2px rgba(0,0,0,.4);
-    }
-    .title{ font-size:1.1rem; font-weight:300; letter-spacing:.04em; }
-
-    .meta{ margin-top:2px; text-shadow:0 1px 3px rgba(0,0,0,.5); }
-    .track-title{ font-size:1.2rem; font-weight:600; margin:0; }
-    .track-sub{ font-size:.82rem; opacity:.85; margin-top:4px; }
-
-    /* 円形カバー（リングがシーク） */
-    .cover-wrap{
-      position:relative;
-      width:min(78vw,360px);
-      aspect-ratio:1/1;
-      margin:18px auto 10px;
-      border-radius:999px;
-      filter: drop-shadow(0 10px 30px rgba(0,0,0,.35));
-      touch-action:none; /* ドラッグ中のスクロール抑止 */
-    }
-    .ring{
-      position:absolute; inset:0;
-      border-radius:999px;
-      padding:3px; /* ← 細いリング（1/3） */
-      background:
-        conic-gradient(var(--accent) calc(var(--progress,0)*1turn),
-                       var(--accent-weak) 0);
-    }
-    .cover{
-      width:100%; height:100%;
-      border-radius:999px;
-      background-size:cover; background-position:center;
-      overflow:hidden; position:relative;
-    }
-    .knob{ position:absolute; inset:0; pointer-events:none; }
-    .knob::after{
-      content:""; position:absolute; left:50%; top:0;
-      width:12px; height:12px; border-radius:999px;
-      background:var(--accent);
-      transform:translate(-50%,-6px) rotate(0turn);
-      box-shadow:0 0 10px rgba(111,0,1,.8);
-    }
-
-    /* 時刻だけ（横長シークは廃止のまま） */
-    .time-row{
-      width:100%; max-width:520px;
-      display:flex; align-items:center; justify-content:space-between;
-      font-size:.8rem; opacity:.92; margin:2px auto 8px;
-      text-shadow:0 1px 2px rgba(0,0,0,.5);
-    }
-
-    /* —— シンプルなコントロール —— */
-    .controls{
-      width:100%; max-width:520px;
-      display:flex; align-items:center; justify-content:center;
-      gap:24px; margin:10px auto 8px;
-    }
-    .icon-btn{
-      background:none;           /* 背景なし */
-      border:none;               /* 枠なし */
-      color:#fff;
-      padding:10px;
-      display:grid; place-items:center;
-      touch-action:manipulation;
-    }
-    .icon-btn svg{ width:28px; height:28px; fill:currentColor; }
-    #playBtn svg{ width:36px; height:36px; }
-    .icon-btn:active{ opacity:.6; }
-
-    /* —— シンプルな音量バー（反転UIに戻す） —— */
-    .volume{
-      width:100%; max-width:520px;
-      display:flex; align-items:center; gap:10px; margin:14px auto 0;
-    }
-    .volume svg{ width:20px; height:20px; fill:#fff; flex-shrink:0; }
-    .vol-range{
-      flex:1;
-      -webkit-appearance:none; background:transparent; mix-blend-mode:difference;
-    }
-    .vol-range::-webkit-slider-runnable-track{ height:2px; background:#fff; }
-    .vol-range::-webkit-slider-thumb{
-      -webkit-appearance:none; width:14px; height:14px; border-radius:50%;
-      background:#fff; margin-top:-6px;
-    }
-    .vol-range::-moz-range-track{ height:2px; background:#fff; }
-    .vol-range::-moz-range-thumb{ width:14px; height:14px; border:none; border-radius:50%; background:#fff; }
-
-    .foot{ position:fixed; bottom:8px; left:0; width:100%; text-align:center; font-size:.7rem; opacity:.85; text-shadow:0 1px 3px rgba(0,0,0,.5); }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>TENKU Sound Player</title>
+<style>
+  :root{
+    --accent:#6F0001;
+    --rest:#ffffff30;
+    --text:#fff;
+    --ring-thick:1px;
+  }
+  *{ box-sizing:border-box }
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--text); background:#000; -webkit-text-size-adjust:100%; user-select:none;
+  }
+  .main{ min-height:100dvh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px 12px 96px; }
+  .bg__layer{position:fixed; inset:0; background-size:cover; background-position:center; opacity:0; transition:opacity .6s ease; z-index:-2;}
+  .bg__layer.is-active{opacity:1;}
+  .glass-bg{position:fixed; inset:0; backdrop-filter:blur(14px) saturate(120%); -webkit-backdrop-filter:blur(14px) saturate(120%); background:rgba(0,0,0,.28); z-index:-1;}
+  .title{margin:6px 0 10px; font-size:1.1rem; font-weight:300; text-align:center;}
+  .track-title{font-size:1.2rem; font-weight:600; margin:8px 0 0; text-align:center;}
+  .track-sub{font-size:.82rem; opacity:.85; text-align:center;}
+  .cover-wrap{position:relative; width:min(78vw,340px); aspect-ratio:1/1; margin:28px auto 16px; touch-action:none;}
+  .cover{position:absolute; inset:calc(var(--ring-thick) * 3); border-radius:50%; background-size:cover; background-position:center;
+         box-shadow:0 8px 28px rgba(0,0,0,.35), inset 0 0 0 1px #ffffff30;}
+  .ring-rotor{position:absolute; inset:0; transform:rotate(-90deg);}
+  .ring{position:absolute; inset:0; border-radius:50%; padding:var(--ring-thick);
+        background:conic-gradient(var(--accent) 0deg calc(var(--progress,0) * 360deg), var(--rest) calc(var(--progress,0) * 360deg) 360deg);}
+  .knob{position:absolute; inset:0; pointer-events:none;}
+  .knob::after{content:""; position:absolute; left:50%; top:0; width:10px; height:10px; border-radius:50%; background:var(--accent);
+               transform:translate(-50%,-6px) rotate(0deg); box-shadow:0 0 8px rgba(111,0,1,.8);}
+  .time-row{position:absolute; top:-24px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:6px;
+            font-size:.82rem; opacity:.95; text-shadow:0 1px 2px rgba(0,0,0,.5);}
+  .time-divider{opacity:.7;}
+  .controls{display:flex; align-items:center; justify-content:center; gap:24px; margin-top:12px;}
+  .icon-btn{background:none; border:none; color:#fff; padding:10px; display:grid; place-items:center;}
+  .icon-btn svg{width:28px; height:28px; fill:currentColor;}
+  #playBtn svg{width:36px; height:36px;}
+  .icon-btn:active{opacity:.6;}
+  .volume{width:100%; max-width:520px; display:flex; align-items:center; gap:10px; margin:20px auto 0;}
+  .volume svg{width:20px; height:20px; fill:#fff;}
+  .vol-range{flex:1; -webkit-appearance:none; background:transparent; mix-blend-mode:difference;}
+  .vol-range::-webkit-slider-runnable-track{height:2px; background:#fff;}
+  .vol-range::-webkit-slider-thumb{-webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:#fff; margin-top:-6px;}
+  .vol-range::-moz-range-track{height:2px; background:#fff;}
+  .vol-range::-moz-range-thumb{width:14px; height:14px; border:none; border-radius:50%; background:#fff;}
+  .foot{position:fixed; bottom:8px; left:0; width:100%; text-align:center; font-size:.7rem; opacity:.85;}
+</style>
 </head>
 <body>
-  <!-- 背景写真 -->
+  <!-- 背景 -->
   <div id="bgA" class="bg__layer is-active"></div>
   <div id="bgB" class="bg__layer"></div>
-  <!-- ぼかし膜（背景のみ） -->
   <div class="glass-bg" aria-hidden="true"></div>
 
-  <div class="topbar"><div class="title">TENKU Sound Player</div></div>
-
-  <div class="meta">
-    <h2 id="trackTitle" class="track-title">サンプルサウンド1</h2>
+  <main class="main">
+    <div class="title">TENKU Sound Player</div>
+    <div class="track-title" id="trackTitle">Track 2</div>
     <div class="track-sub" id="trackSub">Ambient · Loop</div>
-  </div>
 
-  <!-- 円形カバー（外周リング = シーク） -->
-  <div class="cover-wrap" id="dial">
-    <div class="ring" id="ring" style="--progress:0;">
+    <div class="cover-wrap" id="dial">
       <div class="cover" id="cover"></div>
-      <div class="knob" id="knob"></div>
+      <div class="ring-rotor">
+        <div class="ring" id="ring" style="--progress:0;"></div>
+        <div class="knob" id="knob"></div>
+      </div>
+      <div class="time-row">
+        <span id="current">00:00</span><span class="time-divider">|</span><span id="duration">00:00</span>
+      </div>
     </div>
-  </div>
 
-  <!-- 時刻のみ -->
-  <div class="time-row">
-    <span id="current">00:00</span>
-    <span id="duration">00:00</span>
-  </div>
+    <div class="controls">
+      <button id="prevBtn" class="icon-btn" aria-label="前の曲へ">
+        <svg viewBox="0 0 24 24"><path d="M19 20V4L9 12l10 8zM5 20V4h2v16H5z"/></svg>
+      </button>
+      <button id="playBtn" class="icon-btn" aria-label="再生/一時停止">
+        <svg id="playIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      </button>
+      <button id="nextBtn" class="icon-btn" aria-label="次の曲へ">
+        <svg viewBox="0 0 24 24"><path d="M5 4v16l10-8L5 4zm12 0v16h2V4h-2z"/></svg>
+      </button>
+    </div>
 
-  <!-- 送り / 再生 / 戻し（シンプル） -->
-  <div class="controls">
-    <button id="prevBtn" class="icon-btn" aria-label="前の曲へ">
-      <svg viewBox="0 0 24 24"><path d="M19 20V4L9 12l10 8zM5 20V4h2v16H5z"/></svg>
-    </button>
+    <div class="volume">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.06c1.48-.74 2.5-2.26 2.5-4.03z"/></svg>
+      <input type="range" id="volume" class="vol-range" min="0" max="1" step="0.01" value="1" aria-label="音量">
+    </div>
 
-    <button id="playBtn" class="icon-btn" aria-label="再生/一時停止">
-      <svg id="playIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-    </button>
-
-    <button id="nextBtn" class="icon-btn" aria-label="次の曲へ">
-      <svg viewBox="0 0 24 24"><path d="M5 4v16l10-8L5 4zm12 0v16h2V4h-2z"/></svg>
-    </button>
-  </div>
-
-  <!-- 音量（シンプル反転UI） -->
-  <div class="volume">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.06c1.48-.74 2.5-2.26 2.5-4.03z"/></svg>
-    <input type="range" id="volume" class="vol-range" min="0" max="1" step="0.01" value="1" aria-label="音量">
-  </div>
-
-  <!-- 内部用 -->
-  <select id="track" style="display:none">
-    <option value="1">サンプルサウンド1</option>
-    <option value="2">サンプルサウンド2</option>
-    <option value="3">サンプルミュージック</option>
-  </select>
+    <select id="track" style="display:none"></select>
+  </main>
 
   <div class="foot">© 2025 KOBE TENKU RESORT</div>
 
   <audio id="audio" preload="auto" playsinline></audio>
 
-  <script>
-    const bust=`?v=${Date.now()}`;
-    const bgMap={1:`/assets/images/bg1.jpg${bust}`,2:`/assets/images/bg2.jpg${bust}`,3:`/assets/images/bg3.jpg${bust}`};
-    const trackNames={1:"サンプルサウンド1",2:"サンプルサウンド2",3:"サンプルミュージック"};
+<script>
+  const bust=`?v=${Date.now()}`;
 
-    const audio=document.getElementById('audio');
-    const playBtn=document.getElementById('playBtn');
-    const playIcon=document.getElementById('playIcon');
-    const prevBtn=document.getElementById('prevBtn');
-    const nextBtn=document.getElementById('nextBtn');
-    const trackSel=document.getElementById('track');
-    const trackTitle=document.getElementById('trackTitle');
-    const trackSub=document.getElementById('trackSub');
-    const currentEl=document.getElementById('current');
-    const durationEl=document.getElementById('duration');
+  /* ===== プレイリスト（ファイル名に合わせて反映） ===== */
+  const playlist = [
+    { title:"Track 2",  src:`/assets/audio/Track2_WAV.m4a${bust}`,           bg:`/assets/images/bg1.jpg${bust}` },
+    { title:"Track 3",  src:`/assets/audio/Track3_2025102514WAV.m4a${bust}`,  bg:`/assets/images/bg2.jpg${bust}` },
+    { title:"Track 4",  src:`/assets/audio/Track4_2025100419WAV.m4a${bust}`,  bg:`/assets/images/bg3.jpg${bust}` },
+    { title:"Track 5",  src:`/assets/audio/Track5_2025101614WAV.m4a${bust}`,  bg:`/assets/images/bg4.JPG${bust}` },  // 大文字拡張子
+    { title:"Track 7",  src:`/assets/audio/Track7_2025102514WAV.m4a${bust}`,  bg:`/assets/images/bg5.jpg${bust}` },
+    { title:"Track 9",  src:`/assets/audio/Track9_1812102012WAV.m4a${bust}`,  bg:`/assets/images/bg6.jpg${bust}` },
+    { title:"Track 10", src:`/assets/audio/Track10_2025102447WAV.m4a${bust}`, bg:`/assets/images/bg7.jpg${bust}` },
+    { title:"Sound 3",  src:`/assets/audio/sound3.mp3${bust}`,                 bg:`/assets/images/bg9.JPG${bust}` }   // 大文字拡張子
+  ];
 
-    const bgA=document.getElementById('bgA');
-    const bgB=document.getElementById('bgB');
-    const ring=document.getElementById('ring');
-    const knob=document.getElementById('knob');
-    const cover=document.getElementById('cover');
-    const dial=document.getElementById('dial');
-    const volume=document.getElementById('volume');
+  /* ===== 参照 ===== */
+  const audio=document.getElementById('audio');
+  const playBtn=document.getElementById('playBtn');
+  const playIcon=document.getElementById('playIcon');
+  const prevBtn=document.getElementById('prevBtn');
+  const nextBtn=document.getElementById('nextBtn');
+  const trackTitle=document.getElementById('trackTitle');
+  const trackSub=document.getElementById('trackSub');
+  const currentEl=document.getElementById('current');
+  const durationEl=document.getElementById('duration');
+  const ring=document.getElementById('ring');
+  const knob=document.getElementById('knob');
+  const cover=document.getElementById('cover');
+  const dial=document.getElementById('dial');
+  const volume=document.getElementById('volume');
+  const bgA=document.getElementById('bgA');
+  const bgB=document.getElementById('bgB');
 
-    let activeIsA=true;
-    let dragging=false;
+  let activeIsA=true, dragging=false, idx=0;
 
-    /* Web Audio（iOS音量対策） */
-    let audioCtx=null,gainNode=null,mediaSrc=null;
-    function ensureAudioGraph(){
-      if(audioCtx)return;
-      const Ctx=window.AudioContext||window.webkitAudioContext; if(!Ctx)return;
-      audioCtx=new Ctx();
-      try{ mediaSrc=audioCtx.createMediaElementSource(audio);}catch(e){}
-      gainNode=audioCtx.createGain();
-      mediaSrc&&mediaSrc.connect(gainNode); gainNode.connect(audioCtx.destination);
-      gainNode.gain.value=Number(volume.value);
-    }
-    function resumeContextIfNeeded(){ if(audioCtx&&audioCtx.state==="suspended"){ audioCtx.resume().catch(()=>{});} }
-    function setVolumeFromSlider(v){ const vol=Math.max(0,Math.min(1,Number(v))); if(gainNode){gainNode.gain.value=vol;} else { audio.volume=vol; } }
+  /* Web Audio（iOS音量） */
+  let audioCtx=null,gainNode=null,mediaSrc=null;
+  function ensureAudioGraph(){
+    if(audioCtx) return;
+    const Ctx=window.AudioContext||window.webkitAudioContext; if(!Ctx) return;
+    audioCtx=new Ctx();
+    try{ mediaSrc=audioCtx.createMediaElementSource(audio);}catch(e){}
+    gainNode=audioCtx.createGain();
+    mediaSrc&&mediaSrc.connect(gainNode); gainNode.connect(audioCtx.destination);
+    gainNode.gain.value=Number(volume.value);
+  }
+  function resumeContextIfNeeded(){ if(audioCtx&&audioCtx.state==="suspended"){ audioCtx.resume().catch(()=>{});} }
+  function setVolumeFromSlider(v){ const n=Number(v); if(gainNode){gainNode.gain.value=n;} else { audio.volume=n; } }
 
-    const fmt=t=>`${String(Math.floor(t/60)).padStart(2,'0')}:${String(Math.floor(t%60)).padStart(2,'0')}`;
+  const fmt=t=>`${String(Math.floor(t/60)).padStart(2,'0')}:${String(Math.floor(t%60)).padStart(2,'0')}`;
 
-    function setBackground(num){
-      const url=bgMap[num]; const front=activeIsA?bgB:bgA; const back=activeIsA?bgA:bgB;
-      const img=new Image();
-      img.onload=()=>{ front.style.backgroundImage=`url("${url}")`; front.classList.add('is-active'); back.classList.remove('is-active'); activeIsA=!activeIsA; cover.style.backgroundImage=`url("${url}")`; };
-      img.src=url;
-    }
+  function xfadeBackground(url){
+    const front=activeIsA?bgB:bgA, back=activeIsA?bgA:bgB;
+    const img=new Image();
+    img.onload=()=>{ front.style.backgroundImage=`url("${url}")`; front.classList.add('is-active'); back.classList.remove('is-active'); activeIsA=!activeIsA; cover.style.backgroundImage=`url("${url}")`; };
+    img.src=url;
+  }
 
-    function loadTrack(num,autoPlay=false){
-      const src=`/assets/audio/sound${num}.mp3${bust}`;
-      audio.innerHTML=`<source src="${src}" type="audio/mpeg">`; audio.load();
-      setBackground(num); trackTitle.textContent=trackNames[num]; trackSub.textContent="Ambient · Loop";
-      if(autoPlay){ ensureAudioGraph(); resumeContextIfNeeded(); audio.play().then(()=>updatePlayIcon(true)).catch(()=>{}); }
-      else { updatePlayIcon(false); }
-    }
+  function loadTrack(i, autoPlay=false){
+    idx=(i+playlist.length)%playlist.length;
+    const tr=playlist[idx];
+    // m4a は audio/mp4, mp3 は audio/mpeg として両方差し込む（ブラウザ互換）
+    audio.innerHTML = `
+      <source src="${tr.src}" ${tr.src.endsWith('.mp3'+bust) ? 'type="audio/mpeg"' : 'type="audio/mp4"'} />
+    `;
+    audio.load();
+    trackTitle.textContent = tr.title;
+    trackSub.textContent = "Ambient · Loop";
+    xfadeBackground(tr.bg);
+    if(autoPlay){ ensureAudioGraph(); resumeContextIfNeeded(); audio.play().then(()=>updatePlayIcon(true)).catch(()=>{}); }
+    else { updatePlayIcon(false); }
+  }
 
-    function updatePlayIcon(playing){
-      playIcon.innerHTML = playing
-        ? '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>'
-        : '<path d="M8 5v14l11-7z"/>';
-    }
+  function updatePlayIcon(playing){
+    playIcon.innerHTML = playing
+      ? '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>'
+      : '<path d="M8 5v14l11-7z"/>';
+  }
 
-    function setProgressUI(){
-      const d=audio.duration||0, t=audio.currentTime||0;
-      currentEl.textContent=fmt(t);
-      durationEl.textContent=fmt(d);
-      const p=d?(t/d):0;
-      ring.style.setProperty('--progress',p);
-      knob.style.transform=`rotate(${p}turn)`;
-    }
+  function setProgressUI(){
+    const d=audio.duration||0, t=audio.currentTime||0;
+    currentEl.textContent=fmt(t); durationEl.textContent=fmt(d);
+    const p=d?(t/d):0;
+    ring.style.setProperty('--progress', p);
+    knob.style.transform=`translate(-50%,-6px) rotate(${p*360}deg)`;
+  }
 
-    /* 円形シーク（タップ/ドラッグ） */
-    function getDialProgressFromEvent(ev){
-      const rect = dial.getBoundingClientRect();
-      const cx = rect.left + rect.width/2;
-      const cy = rect.top  + rect.height/2;
-      const point = ('touches' in ev && ev.touches.length)
-        ? ev.touches[0] : ('changedTouches' in ev && ev.changedTouches?.length ? ev.changedTouches[0] : ev);
-      const dx = point.clientX - cx;
-      const dy = point.clientY - cy;
-      const theta = Math.atan2(dy, dx);
-      let p = (theta + Math.PI/2) / (2*Math.PI);
-      if (p < 0) p += 1;
-      return p; // 0..1
-    }
-    function handleDialDown(ev){ dragging=true; const p=getDialProgressFromEvent(ev); scrubToProgress(p); ev.preventDefault(); }
-    function handleDialMove(ev){ if(!dragging) return; const p=getDialProgressFromEvent(ev); scrubToProgress(p); ev.preventDefault(); }
-    function handleDialUp(ev){ if(!dragging) return; dragging=false; ev.preventDefault(); }
-    function scrubToProgress(p){ const d=audio.duration||0; if(!d) return; audio.currentTime=p*d; setProgressUI(); }
+  function angleFromEvent(ev){
+    const rect=dial.getBoundingClientRect();
+    const cx=rect.left+rect.width/2, cy=rect.top+rect.height/2;
+    const pt=('touches' in ev && ev.touches.length)? ev.touches[0] : ev;
+    let theta=Math.atan2(pt.clientY-cy, pt.clientX-cx); // 右=0
+    theta += Math.PI/2; if(theta<0) theta += Math.PI*2; // 真上=0
+    return theta/(Math.PI*2);
+  }
+  function scrubTo(p){ const d=audio.duration||0; if(d){ audio.currentTime=p*d; setProgressUI(); } }
+  function down(e){ dragging=true; scrubTo(angleFromEvent(e)); e.preventDefault(); }
+  function move(e){ if(dragging) scrubTo(angleFromEvent(e)); }
+  function up(){ dragging=false; }
 
-    dial.addEventListener('pointerdown', handleDialDown, {passive:false});
-    window.addEventListener('pointermove', handleDialMove, {passive:false});
-    window.addEventListener('pointerup', handleDialUp, {passive:false});
-    dial.addEventListener('touchstart', handleDialDown, {passive:false});
-    window.addEventListener('touchmove', handleDialMove, {passive:false});
-    window.addEventListener('touchend', handleDialUp, {passive:false});
+  dial.addEventListener('pointerdown',down,{passive:false});
+  window.addEventListener('pointermove',move,{passive:false});
+  window.addEventListener('pointerup',up,{passive:false});
+  dial.addEventListener('touchstart',down,{passive:false});
+  window.addEventListener('touchmove',move,{passive:false});
+  window.addEventListener('touchend',up,{passive:false});
 
-    /* コントロール */
-    playBtn.addEventListener('click',async()=>{
-      ensureAudioGraph(); resumeContextIfNeeded();
-      if(audio.paused){ try{ await audio.play(); updatePlayIcon(true);}catch(e){} }
-      else { audio.pause(); updatePlayIcon(false); }
-    });
-    prevBtn.addEventListener('click',()=>{ let i=Number(trackSel.value); i=(i-2+3)%3+1; trackSel.value=i; loadTrack(i,true); });
-    nextBtn.addEventListener('click',()=>{ let i=Number(trackSel.value); i=(i%3)+1; trackSel.value=i; loadTrack(i,true); });
+  playBtn.addEventListener('click',async()=>{
+    ensureAudioGraph(); resumeContextIfNeeded();
+    if(audio.paused){ try{ await audio.play(); updatePlayIcon(true);}catch(e){} }
+    else { audio.pause(); updatePlayIcon(false); }
+  });
+  prevBtn.addEventListener('click',()=> loadTrack(idx-1,true));
+  nextBtn.addEventListener('click',()=> loadTrack(idx+1,true));
 
-    volume.addEventListener('input',e=>{ ensureAudioGraph(); resumeContextIfNeeded(); setVolumeFromSlider(e.target.value); });
+  volume.addEventListener('input',e=>{ ensureAudioGraph(); resumeContextIfNeeded(); setVolumeFromSlider(e.target.value); });
 
-    audio.addEventListener('loadedmetadata',setProgressUI);
-    audio.addEventListener('timeupdate',()=>{ if(!dragging) setProgressUI(); });
-    audio.addEventListener('ended',()=>{ let i=Number(trackSel.value); i=(i%3)+1; trackSel.value=i; loadTrack(i,true); });
+  audio.addEventListener('loadedmetadata',setProgressUI);
+  audio.addEventListener('timeupdate',()=>{ if(!dragging) setProgressUI(); });
+  audio.addEventListener('ended',()=> loadTrack(idx+1,true));
 
-    (function init(){
-      const first=Number(trackSel.value);
-      bgA.style.backgroundImage=`url("${bgMap[first]}")`; bgA.classList.add('is-active');
-      cover.style.backgroundImage=`url("${bgMap[first]}")`;
-      loadTrack(first,false);
-      // 初期音量
-      ensureAudioGraph(); setVolumeFromSlider(volume.value);
-    })();
-  </script>
+  (function init(){
+    ensureAudioGraph(); setVolumeFromSlider(volume.value);
+    loadTrack(0,false);
+  })();
+</script>
 </body>
 </html>
