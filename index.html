@@ -22,7 +22,7 @@
   .timebox .label{font-size:.7rem; opacity:.6}
   .timebox .hms{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:1.05rem}
 
-  /* ===== チューナー（ループスクロール対応） ===== */
+  /* ===== チューナー（ループスクロール＋中央赤線固定） ===== */
   .tuner{position:relative; padding:12px 14px 8px; display:flex; flex-direction:column; gap:10px;}
   .scale{ position:relative; height:64px; border-radius:10px; background:#fdfdfd; border:1px solid #00000018; overflow:hidden; touch-action:none; z-index:2; pointer-events:auto; }
   .belt{ position:absolute; top:0; left:0; height:100%; width:300%; will-change:transform; }
@@ -31,9 +31,7 @@
       repeating-linear-gradient(to right, var(--tick) 0px, var(--tick) 1px, transparent 1px, transparent 7px),
       repeating-linear-gradient(to right, var(--tick) 0px, var(--tick) 2px, transparent 2px, transparent 40px);
   }
-  .segment.segL{ left:0; }
-  .segment.segC{ left:33.3333%; }
-  .segment.segR{ left:66.6666%; }
+  .segment.segL{ left:0; } .segment.segC{ left:33.3333%; } .segment.segR{ left:66.6666%; }
 
   .station{position:absolute; top:0; height:100%; width:4px; background:#111; opacity:.18; transform:translateX(-2px);}
   .station.is-hot{opacity:.36;}
@@ -88,7 +86,6 @@
       <!-- TUNER -->
       <div class="tuner">
         <div id="scale" class="scale" aria-label="Tuner scale">
-          <!-- 3セグメントのベルト（ループ） -->
           <div id="belt" class="belt">
             <div class="segment segL" id="segL"></div>
             <div class="segment segC" id="segC"></div>
@@ -139,7 +136,7 @@
     { name:"Track 2",  src:`/assets/audio/Track2_WAV.m4a${bust}`,           bg:`/assets/images/bg1.jpg${bust}` },
     { name:"Track 3",  src:`/assets/audio/Track3_2025102514WAV.m4a${bust}`,  bg:`/assets/images/bg2.jpg${bust}` },
     { name:"Track 4",  src:`/assets/audio/Track4_2025100419WAV.m4a${bust}`,  bg:`/assets/images/bg3.jpg${bust}` },
-    { name:"Track 5",  src:`/assets/audio/Track5_2025101614WAV.m4a${bust}`,  bg:`/assets/images/bg4.JPG${bust}` }, // 大文字混在OK
+    { name:"Track 5",  src:`/assets/audio/Track5_2025101614WAV.m4a${bust}`,  bg:`/assets/images/bg4.JPG${bust}` },
     { name:"Track 7",  src:`/assets/audio/Track7_2025102514WAV.m4a${bust}`,  bg:`/assets/images/bg5.jpg${bust}` },
     { name:"Track 9",  src:`/assets/audio/Track9_1812102012WAV.m4a${bust}`,  bg:`/assets/images/bg6.jpg${bust}` },
     { name:"Track10",  src:`/assets/audio/Track10_2025102447WAV.m4a${bust}`, bg:`/assets/images/bg7.jpg${bust}` },
@@ -220,30 +217,22 @@
   const stations = playlist.map((p,i,arr)=>({ freq:+(FM_MIN+(FM_MAX-FM_MIN)*((i+1)/(arr.length+1))).toFixed(1), title:p.name }));
 
   let currentIndex=-1;
-  let viewW=1;            // 画面幅(px) = 1セグメント
-  let segW =1;            // セグメント幅
-  let beltOffset=0;       // ベルトのtranslateX(px)  ※中央セグメントを基準に[-segW/2, +segW/2]に常時正規化
-  let dragging=false, lastX=0, lastClick=0;
+  let viewW=1, segW=1, beltOffset=0;
+  let dragging=false, lastX=0, lastClick=0, animId=null;
 
   const posToFreq = p => +(FM_MIN + p * (FM_MAX-FM_MIN)).toFixed(1);
   const freqToPos = f => (f - FM_MIN) / (FM_MAX-FM_MIN);
 
-  function normOffset(x){
-    // 常に [-segW/2, +segW/2] に折り返し
-    while(x >  segW/2) x -= segW;
-    while(x < -segW/2) x += segW;
-    return x;
-  }
+  function normOffset(x){ while(x >  segW/2) x -= segW; while(x < -segW/2) x += segW; return x; }
 
   function setBeltOffset(x){
     beltOffset = normOffset(x);
     belt.style.transform = `translateX(${beltOffset}px)`;
-    // 中央の目盛りが指す「相対 pos 0..1」
-    const centerX = viewW / 2;
-    let pos = (centerX - beltOffset) / segW;  // 0..1 を超える値
-    pos = ((pos % 1) + 1) % 1;                // 0..1 に正規化（負もOK）
 
-    // 表示更新
+    const centerX = viewW / 2;
+    let pos = (centerX - beltOffset) / segW;
+    pos = ((pos % 1) + 1) % 1;
+
     const f = posToFreq(pos);
     freqNum.textContent = f.toFixed(1);
 
@@ -256,7 +245,6 @@
     let best={i:0,d:Infinity,t:0};
     stations.forEach((s,i)=>{
       const t=freqToPos(s.freq);
-      // ループ上の距離（円環距離）を採用
       let d=Math.abs(t-pos); d = Math.min(d, 1-d);
       if(d<best.d) best={i,d,t};
     });
@@ -265,8 +253,7 @@
 
   function layout(){
     viewW = scale.clientWidth || 1;
-    segW  = viewW;                      // 1セグメント = 画面幅
-    // セグメント幅に合わせて station マーカーを3つのセグメントに複製
+    segW  = viewW;
     [segL,segC,segR].forEach(seg => seg.querySelectorAll('.station').forEach(n=>n.remove()));
     const addMarkers = (segEl, segIndex) => {
       stations.forEach(s=>{
@@ -276,19 +263,16 @@
       });
     };
     addMarkers(segL, -1); addMarkers(segC, 0); addMarkers(segR, +1);
-
-    setBeltOffset(beltOffset);          // 位置再計算
+    setBeltOffset(beltOffset);
   }
 
   function highlightStation(i){
-    // 3セグメント全てのマーカーから該当周波数のものを強調
     const target = stations[i];
     const targetPos = freqToPos(target.freq);
     const all = belt.querySelectorAll('.station');
     all.forEach(el => el.classList.remove('is-hot'));
-    // セグメントごとの該当xを概算して近いものに is-hot
     [segL,segC,segR].forEach((seg,idx)=>{
-      const x = (targetPos*segW) + (idx-1)*segW; // -1,0,1 セグメント
+      const x = (targetPos*segW) + (idx-1)*segW;
       let nearest=null, best=1e9;
       seg.querySelectorAll('.station').forEach(m=>{
         const left = parseFloat(m.style.left||'0');
@@ -299,39 +283,53 @@
     });
   }
 
-  function alignToStation(i, play=true){
-    i = (i + playlist.length) % playlist.length;
-    currentIndex = i;
-    const t = freqToPos(stations[i].freq);
-    // 中央線に t を合わせるためのオフセット
-    const centerX = viewW/2;
-    const stationX = t * segW;
-    const targetOffset = centerX - stationX; // ベルトを左(+)/右(-)に動かす
-    setBeltOffset(targetOffset);
-    playClick();
-    if(play) loadByIndex(i, true);
-  }
-
+  // 音源のロード：<source> は使わず audio.src を直接差し替え（type依存を回避）
   function loadByIndex(i, auto=true){
     i=(i+playlist.length)%playlist.length; currentIndex=i;
     const tr=playlist[i];
-    const isMp3=/\.mp3\?v=/.test(tr.src);
-    audio.innerHTML=`<source src="${tr.src}" type="${isMp3?'audio/mpeg':'audio/mp4'}">`;
+    audio.src = tr.src;         // ← これでブラウザのタイプ判定に任せる
     audio.load();
     trackTitle.textContent=tr.name;
     swapBg(tr.bg);
     if(auto){ ensureAudio(); if(ctx) ctx.resume().catch(()=>{}); audio.play().then(()=>updatePlayIcon(true)).catch(()=>{}); }
     highlightStation(i);
   }
+
   function updatePlayIcon(playing){
     playIcon.innerHTML = playing
       ? '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>'
       : '<path d="M8 5v14l11-7z"/>';
   }
 
-  /* ===== 入力処理（ループ） ===== */
+  // 最寄り局へスムーススナップ（200ms）
+  function animateToOffset(target, onDone){
+    cancelAnimationFrame(animId);
+    const start = beltOffset, total = normOffset(target - start);
+    const t0 = performance.now(), dur = 200;
+    const ease = x => 1 - Math.pow(1-x, 3);
+    const tick = (now) => {
+      const p = Math.min(1, (now - t0) / dur);
+      setBeltOffset(start + total * ease(p));
+      if(p < 1) animId = requestAnimationFrame(tick);
+      else onDone && onDone();
+    };
+    animId = requestAnimationFrame(tick);
+  }
+
+  function alignToStation(i, play=true){
+    i = (i + playlist.length) % playlist.length;
+    currentIndex=i;
+    const t = freqToPos(stations[i].freq);
+    const centerX = viewW/2;
+    const stationX = t * segW;
+    const targetOffset = centerX - stationX;
+    playClick();
+    animateToOffset(targetOffset, () => { if(play) { ensureAudio(); if(ctx) ctx.resume().catch(()=>{}); loadByIndex(i, true); } });
+  }
+
+  /* ===== 入力処理 ===== */
   const clientX = e => (e.touches? e.touches[0].clientX : e.clientX);
-  function begin(e){ dragging=true; lastX=clientX(e); e.preventDefault(); ensureAudio(); if(ctx) ctx.resume().catch(()=>{}); playClick(); }
+  function begin(e){ dragging=true; lastX=clientX(e); e.preventDefault(); ensureAudio(); if(ctx) ctx.resume().catch(()=>{}); playClick(); cancelAnimationFrame(animId); }
   function move(e){
     if(!dragging) return;
     const x=clientX(e), dx=x-lastX; lastX=x;
@@ -343,7 +341,8 @@
     if(!dragging) return; dragging=false;
     const centerPos = (( (viewW/2 - beltOffset) / segW ) % 1 + 1) % 1;
     const near = nearestStation(centerPos);
-    alignToStation(near.i, true);
+    ensureAudio(); if(ctx) ctx.resume().catch(()=>{});
+    alignToStation(near.i, true);  // ← スナップ＆再生
   }
   scale.addEventListener('pointerdown',begin,{passive:false});
   window.addEventListener('pointermove',move,{passive:false});
@@ -351,8 +350,7 @@
   scale.addEventListener('touchstart',begin,{passive:false});
   window.addEventListener('touchmove',move,{passive:false});
   window.addEventListener('touchend',end,{passive:false});
-
-  // クリックでもクリック音（当たり判定確認用）
+  // 当たり確認クリック（効果音）
   scale.addEventListener('click', ()=>{ ensureAudio(); if(ctx) ctx.resume().catch(()=>{}); playClick(); });
 
   /* ===== ボタン/キー ===== */
@@ -375,9 +373,12 @@
   (async function init(){
     await ensureAudio();
     layout();
-    // 真ん中に最も近い局を初期選択（再生はしない）
     const near = (()=>{ let b={i:0,d:1e9}; stations.forEach((s,i)=>{ const d=Math.abs(freqToPos(s.freq)-0.5); const dd=Math.min(d,1-d); if(dd<b.d) b={i, d:dd}; }); return b;})();
-    alignToStation(near.i, false);
+    // 初期は読み込みだけ（自動再生はしない）
+    const t = freqToPos(stations[near.i].freq);
+    const centerX = viewW/2, stationX = t*segW;
+    setBeltOffset(centerX - stationX);
+    loadByIndex(near.i, false);
   })();
 })();
 </script>
