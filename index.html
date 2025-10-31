@@ -27,13 +27,12 @@
   /* ====== レイアウト（モバイル先行） ====== */
   .wrap{
     min-height:100dvh; display:flex; align-items:center; justify-content:center;
-    padding:16px;
+    padding:16px; /* モバイルは狭め */
   }
   .panel{
     width:100%;
     max-width:920px;
-    background:#f8f4e6; /* ← 修正 */
-    border:1px solid #00000018; border-radius:14px;
+    background:##f8f4e6; border:1px solid #00000018; border-radius:14px;
     box-shadow:0 12px 40px rgba(0,0,0,.08);
   }
   .panel__top{
@@ -83,14 +82,6 @@
   .range::-webkit-slider-thumb{-webkit-appearance:none; width:16px; height:16px; border-radius:50%; background:#111; margin-top:-7px;}
   .range::-moz-range-track{height:2px; background:#111;}
   .range::-moz-range-thumb{width:16px; height:16px; border:none; border-radius:50%; background:#111;}
-
-  /* 軽いトースト */
-  .toast{
-    position:fixed; left:50%; bottom:12px; transform:translateX(-50%);
-    background:#111; color:#fff; padding:8px 12px; border-radius:999px;
-    font-size:.78rem; opacity:0; pointer-events:none; transition:opacity .3s ease;
-  }
-  .toast.show{opacity:.9;}
 
   /* ====== ブレークポイント ====== */
   @media (min-width:560px){
@@ -161,23 +152,21 @@
     </section>
   </div>
 
-  <div id="toast" class="toast">音量はデバイス本体と連動しません（このプレイヤー内の音量です）</div>
-
   <audio id="audio" preload="auto" playsinline></audio>
 
 <script>
-  const bust=`?v=${Date.now()}`;
+  const bust=?v=${Date.now()};
 
   // プレイリスト（実ファイル名に対応）
   const playlist = [
-    { name:"Track 2",  src:`/assets/audio/Track2_WAV.m4a${bust}`,           bg:`/assets/images/bg1.jpg${bust}` },
-    { name:"Track 3",  src:`/assets/audio/Track3_2025102514WAV.m4a${bust}`,  bg:`/assets/images/bg2.jpg${bust}` },
-    { name:"Track 4",  src:`/assets/audio/Track4_2025100419WAV.m4a${bust}`,  bg:`/assets/images/bg3.jpg${bust}` },
-    { name:"Track 5",  src:`/assets/audio/Track5_2025101614WAV.m4a${bust}`,  bg:`/assets/images/bg4.JPG${bust}` }, // 大文字
-    { name:"Track 7",  src:`/assets/audio/Track7_2025102514WAV.m4a${bust}`,  bg:`/assets/images/bg5.jpg${bust}` },
-    { name:"Track 9",  src:`/assets/audio/Track9_1812102012WAV.m4a${bust}`,  bg:`/assets/images/bg6.jpg${bust}` },
-    { name:"Track10",  src:`/assets/audio/Track10_2025102447WAV.m4a${bust}`, bg:`/assets/images/bg7.jpg${bust}` },
-    { name:"Sound 3",  src:`/assets/audio/sound3.mp3${bust}`,                 bg:`/assets/images/bg9.JPG${bust}` }  // 大文字
+    { name:"Track 2",  src:/assets/audio/Track2_WAV.m4a${bust},           bg:/assets/images/bg1.jpg${bust} },
+    { name:"Track 3",  src:/assets/audio/Track3_2025102514WAV.m4a${bust},  bg:/assets/images/bg2.jpg${bust} },
+    { name:"Track 4",  src:/assets/audio/Track4_2025100419WAV.m4a${bust},  bg:/assets/images/bg3.jpg${bust} },
+    { name:"Track 5",  src:/assets/audio/Track5_2025101614WAV.m4a${bust},  bg:/assets/images/bg4.JPG${bust} }, // 大文字
+    { name:"Track 7",  src:/assets/audio/Track7_2025102514WAV.m4a${bust},  bg:/assets/images/bg5.jpg${bust} },
+    { name:"Track 9",  src:/assets/audio/Track9_1812102012WAV.m4a${bust},  bg:/assets/images/bg6.jpg${bust} },
+    { name:"Track10",  src:/assets/audio/Track10_2025102447WAV.m4a${bust}, bg:/assets/images/bg7.jpg${bust} },
+    { name:"Sound 3",  src:/assets/audio/sound3.mp3${bust},                 bg:/assets/images/bg9.JPG${bust} }  // 大文字
   ];
 
   // FMレンジ & ステーション
@@ -202,7 +191,6 @@
   const trackTitle = document.getElementById('trackTitle');
   const bgA = document.getElementById('bgA');
   const bgB = document.getElementById('bgB');
-  const toast = document.getElementById('toast');
 
   // 背景クロスフェード
   let bgOnA = true;
@@ -211,7 +199,7 @@
     const back  = bgOnA ? bgA : bgB;
     const img = new Image();
     img.onload = ()=>{
-      front.style.backgroundImage = `url("${url}")`;
+      front.style.backgroundImage = url("${url}");
       front.classList.add('is-active');
       back.classList.remove('is-active');
       bgOnA = !bgOnA;
@@ -219,9 +207,8 @@
     img.src = url;
   }
 
-  // Web Audio（iOS音量） + 永続化
+  // Web Audio（iOS音量）
   let ctx=null, gain=null, srcNode=null;
-  const VOL_KEY='tenku_radio_volume';
   function ensureAudio(){
     if(ctx) return;
     const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -231,35 +218,9 @@
     gain = ctx.createGain();
     srcNode && srcNode.connect(gain);
     gain.connect(ctx.destination);
-    // 保存済み音量
-    const saved = localStorage.getItem(VOL_KEY);
-    if(saved!=null){
-      vol.value = saved;
-    }
-    const v = +vol.value;
-    gain.gain.value = v;
-    audio.volume = v; // フォールバック
+    gain.gain.value = +vol.value;
   }
-  function setAppVolume(v){
-    const n = Math.max(0, Math.min(1, +v));
-    if(gain){ gain.gain.value = n; }
-    audio.volume = n;
-    localStorage.setItem(VOL_KEY, String(n));
-  }
-  vol.addEventListener('input', e => {
-    ensureAudio();
-    setAppVolume(e.target.value);
-  });
-
-  // 初回だけトースト表示（2.5秒）
-  (function toastOnce(){
-    const KEY='tenku_radio_toast_v1';
-    if(!localStorage.getItem(KEY)){
-      toast.classList.add('show');
-      setTimeout(()=>toast.classList.remove('show'), 2500);
-      localStorage.setItem(KEY,'1');
-    }
-  })();
+  vol.addEventListener('input', e => { ensureAudio(); gain ? (gain.gain.value=+e.target.value) : (audio.volume=+e.target.value); });
 
   // 針と選局
   let pos=.5, dragging=false, currentIndex=-1;
@@ -269,7 +230,7 @@
       const t = (s.freq - FM_MIN)/(FM_MAX-FM_MIN);
       const m = document.createElement('div');
       m.className='station';
-      m.style.left=`calc(${(t*100).toFixed(4)}% - 2px)`;
+      m.style.left=calc(${(t*100).toFixed(4)}% - 2px);
       scale.appendChild(m);
       markers.push(m);
     });
@@ -289,27 +250,23 @@
   }
   function setNeedle(p){
     pos=Math.max(0,Math.min(1,p));
-    needle.style.setProperty('--x',`${pos*100}%`);
+    needle.style.setProperty('--x',${pos*100}%);
     const f=posToFreq(pos);
     freqNum.textContent=f.toFixed(1);
     const near=nearestStation(pos);
     markers.forEach((m,i)=>m.classList.toggle('is-hot',i===near.i));
-    stationName.textContent=`${stations[near.i].freq.toFixed(1)} MHz — ${playlist[near.i].name}`;
+    stationName.textContent=${stations[near.i].freq.toFixed(1)} MHz — ${playlist[near.i].name};
   }
   function loadByIndex(i,auto=true){
     i=(i+playlist.length)%playlist.length;
     currentIndex=i;
     const tr=playlist[i];
     const isMp3=/\.mp3\?v=/.test(tr.src);
-    audio.innerHTML=`<source src="${tr.src}" type="${isMp3?'audio/mpeg':'audio/mp4'}">`;
+    audio.innerHTML=<source src="${tr.src}" type="${isMp3?'audio/mpeg':'audio/mp4'}">;
     audio.load();
     trackTitle.textContent=tr.name;
     swapBg(tr.bg);
-    if(auto){
-      ensureAudio();
-      ctx && ctx.resume();
-      audio.play().then(()=>updatePlayIcon(true)).catch(()=>{});
-    }
+    if(auto){ ensureAudio(); ctx && ctx.resume(); audio.play().then(()=>updatePlayIcon(true)).catch(()=>{}); }
     const t=freqToPos(stations[i].freq);
     setNeedle(t);
   }
@@ -359,7 +316,7 @@
   const pad=n=>String(n).padStart(2,'0');
   audio.addEventListener('timeupdate',()=>{
     const t=Math.floor(audio.currentTime);
-    hms.textContent=`${pad((t/60)|0)}:${pad(t%60)}`;
+    hms.textContent=${pad((t/60)|0)}:${pad(t%60)};
   });
   audio.addEventListener('ended',()=>loadByIndex(currentIndex+1,true));
 
@@ -368,9 +325,6 @@
     setNeedle(.5);
     const n=nearestStation(.5);
     setNeedle(n.t);
-    ensureAudio();
-    // 保存音量を適用
-    setAppVolume(localStorage.getItem('tenku_radio_volume') ?? vol.value);
     loadByIndex(n.i,false);
   })();
 </script>
