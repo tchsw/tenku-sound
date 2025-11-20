@@ -13,10 +13,10 @@
   /* 背景 */
   .bg{position:fixed; inset:0; z-index:-2}
   .bg__layer{position:absolute; inset:0; background-size:cover; background-position:center; opacity:0; transition:opacity .6s ease;}
-  .bg__layer.is-active{opacity:.22;}
+  .bg__layer.is-active{opacity:.0;}
 
   /* レイアウト */
-  .wrap{min-height:100dvh; display:flex; align-items:center; justify-content:center; padding:16px;}
+  .wrap{min-height:100dvh; display:flex; align-items:center; justify-content:flex-end; padding:16px;}
   .panel{ width:100%; max-width:920px; background:#f8f4e6; border:1px solid #00000018; border-radius:14px; box-shadow:0 12px 40px rgba(0,0,0,.08); }
   .panel__top{ display:grid; grid-template-columns:1fr auto; align-items:center; gap:8px; padding:12px 14px; border-bottom:1px solid #00000018; }
   .brand{letter-spacing:.08em; font-weight:700; font-size:.9rem;}
@@ -71,7 +71,7 @@
   .range::-moz-range-thumb{width:16px; height:16px; border:none; border-radius:50%; background:#111;}
 
   @media (min-width:560px){
-    .wrap{padding:24px} .panel__top{padding:14px 16px}
+    .wrap{padding:24px 24px 40px;} .panel__top{padding:14px 16px}
     .tuner{padding:16px} .scale{height:58px}
     .lower{padding:12px 16px 18px} .volume{width:auto; min-width:220px}
   }
