@@ -11,7 +11,7 @@
   body{
     margin:0;
     font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial;
-    background:#010101;              /* ← 背景の紙色をやめて黒に */
+    background:#010101;              
     color:var(--ink);
     -webkit-tap-highlight-color:transparent;
   }
@@ -31,16 +31,16 @@
     transition:opacity .6s ease;
   }
   .bg__layer.is-active{
-    opacity:1;                    /* ← 白フェードなしで画像そのまま表示 */
+    opacity:1;                    
   }
 
   /* レイアウト */
   .wrap{
     min-height:100dvh;
     display:flex;
-    align-items:flex-end;         /* ← 縦方向を下寄せ */
-    justify-content:center;       /* ← 横方向は中央揃え */
-    padding:16px 16px 32px;       /* ← 下に少し余白 */
+    align-items:flex-end;         
+    justify-content:center;       
+    padding:16px 16px 32px;       
   }
   .panel{
     width:100%;
@@ -63,7 +63,7 @@
   .timebox .label{font-size:.7rem; opacity:.6}
   .timebox .hms{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:1.05rem}
 
-  /* チューナー（ループスクロール＋中央赤線固定） */
+  
   .tuner{
     position:relative;
     padding:12px 14px 8px;
@@ -103,7 +103,7 @@
   .segment.segC{ left:33.3333%; }
   .segment.segR{ left:66.6666%; }
 
-  /* 再生可能な局マーカーのみ太線で描画 */
+  
   .station{
     position:absolute;
     top:0;
@@ -119,7 +119,7 @@
     opacity:.9;
   }
 
-  /* 中央の固定針 */
+  
   .needle-fixed{
     position:absolute;
     top:0;
@@ -153,7 +153,7 @@
   }
   .subtitle{font-size:.78rem; opacity:.65; text-align:right}
 
-  /* 下段 */
+  
   .lower{
     display:flex;
     flex-direction:column;
@@ -176,7 +176,7 @@
   .icon-btn svg{width:26px; height:26px; fill:#111}
   .icon-btn:active{transform:translateY(1px)}
 
-  /* トグル（リピートONの見た目） */
+  
   .icon-btn.toggle.is-active{
     border-color: var(--accent);
     box-shadow:0 0 0 2px #d44a2b33;
@@ -214,7 +214,7 @@
 
   @media (min-width:560px){
     .wrap{
-      padding:24px 24px 40px;   /* ← 下少し多めに */
+      padding:24px 24px 40px;   
     }
     .panel__top{padding:14px 16px}
     .tuner{padding:16px}
@@ -236,7 +236,7 @@
 </style>
 </head>
 <body>
-  <!-- 背景 -->
+  <!-- background -->
   <div class="bg">
     <div id="bgA" class="bg__layer is-active"></div>
     <div id="bgB" class="bg__layer"></div>
